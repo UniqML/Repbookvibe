@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect } from "react";
-import { Send, ArrowLeft } from "lucide-react";
+import { Send, ArrowLeft, Flag } from "lucide-react";
 import {
   useListChatRooms,
   useListChatMessages,
   useSendChatMessage,
   getListChatMessagesQueryKey,
+  useReportChatMessage,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { User } from "@/hooks/useAuth";
@@ -78,6 +79,7 @@ export function ChatsTab({ user }: ChatsTabProps) {
   const [msgText, setMsgText] = useState("");
   const qc = useQueryClient();
   const bottomRef = useRef<HTMLDivElement>(null);
+  const [reportedMsgId, setReportedMsgId] = useState<number | null>(null);
 
   const { data: roomsData, isLoading: roomsLoading } = useListChatRooms();
   const rooms = roomsData?.items || [];
@@ -90,6 +92,7 @@ export function ChatsTab({ user }: ChatsTabProps) {
   const messages = messagesData?.items || [];
 
   const { mutateAsync: sendMsg, isPending: sending } = useSendChatMessage();
+  const { mutateAsync: reportMsg } = useReportChatMessage();
 
   useEffect(() => {
     if (bottomRef.current) {
@@ -103,6 +106,15 @@ export function ChatsTab({ user }: ChatsTabProps) {
       await sendMsg({ roomId: activeRoom, data: { author: user.displayName, author_avatar_seed: user.avatarSeed || user.email || user.displayName, text: msgText.trim() } });
       setMsgText("");
       qc.invalidateQueries({ queryKey: getListChatMessagesQueryKey(activeRoom) });
+    } catch { /* ignore */ }
+  };
+
+  const handleReport = async (messageId: number) => {
+    if (!activeRoom) return;
+    try {
+      await reportMsg({ roomId: activeRoom, messageId: messageId, data: { reason: "inappropriate" } });
+      setReportedMsgId(messageId);
+      setTimeout(() => setReportedMsgId(null), 2000);
     } catch { /* ignore */ }
   };
 
@@ -170,6 +182,22 @@ export function ChatsTab({ user }: ChatsTabProps) {
                   <span style={{ fontSize: 10, color: "var(--muted)", marginTop: 3 }}>
                     {msg.created_at ? new Date(msg.created_at).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" }) : ""}
                   </span>
+                  {!isMe && user && !user.isAnonymous && (
+                    <button
+                      onClick={() => handleReport(msg.id)}
+                      disabled={reportedMsgId === msg.id}
+                      title="Пожаловаться"
+                      style={{
+                        border: 0, background: "transparent", cursor: "pointer",
+                        padding: "2px 4px", display: "inline-flex", alignItems: "center", gap: 3,
+                        color: reportedMsgId === msg.id ? "var(--accent)" : "var(--muted)",
+                        fontSize: 10, marginTop: 2, opacity: 0.7,
+                      }}
+                    >
+                      <Flag size={10} />
+                      {reportedMsgId === msg.id ? "Отправлено" : ""}
+                    </button>
+                  )}
                 </div>
                 {isMe && (
                   <UserAvatar seed={user.avatarSeed || user.email || user.displayName} name={user.displayName} size={40} radius={12} />

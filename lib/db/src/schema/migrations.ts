@@ -46,6 +46,32 @@ export async function runMigrations() {
       ADD COLUMN IF NOT EXISTS author_avatar_seed TEXT;
     `);
 
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS moderation_logs (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        room_id TEXT NOT NULL,
+        message_text TEXT NOT NULL,
+        sanitized_text TEXT,
+        violation_type TEXT NOT NULL,
+        matched_terms TEXT NOT NULL DEFAULT '',
+        action TEXT NOT NULL,
+        created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+      );
+    `);
+
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS reports (
+        id SERIAL PRIMARY KEY,
+        message_id INTEGER NOT NULL REFERENCES chat_messages(id) ON DELETE CASCADE,
+        room_id TEXT NOT NULL,
+        reporter_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        reason TEXT NOT NULL DEFAULT 'inappropriate',
+        status TEXT NOT NULL DEFAULT 'open',
+        created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+      );
+    `);
+
     // Create ratings table if it doesn't exist
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS ratings (

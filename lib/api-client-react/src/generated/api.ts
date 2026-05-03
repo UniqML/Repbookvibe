@@ -32,6 +32,8 @@ import type {
   ImageSearchResult,
   ListChatMessagesParams,
   MusicSearchResult,
+  ReportItemResult,
+  ReportMessageBody,
   SaveBookBody,
   SaveDiaryBody,
   SearchBooksParams,
@@ -892,6 +894,94 @@ export const useSendChatMessage = <
   TContext
 > => {
   return useMutation(getSendChatMessageMutationOptions(options));
+};
+
+/**
+ * @summary Report a chat message
+ */
+export const getReportChatMessageUrl = (roomId: string, messageId: number) => {
+  return `/api/chats/${roomId}/messages/${messageId}/report`;
+};
+
+export const reportChatMessage = async (
+  roomId: string,
+  messageId: number,
+  reportMessageBody?: ReportMessageBody,
+  options?: RequestInit,
+): Promise<ReportItemResult> => {
+  return customFetch<ReportItemResult>(getReportChatMessageUrl(roomId, messageId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(reportMessageBody || {}),
+  });
+};
+
+export const getReportChatMessageMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof reportChatMessage>>,
+    TError,
+    { roomId: string; messageId: number; data?: BodyType<ReportMessageBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof reportChatMessage>>,
+  TError,
+  { roomId: string; messageId: number; data?: BodyType<ReportMessageBody> },
+  TContext
+> => {
+  const mutationKey = ["reportChatMessage"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof reportChatMessage>>,
+    { roomId: string; messageId: number; data?: BodyType<ReportMessageBody> }
+  > = (props) => {
+    const { roomId, messageId, data } = props ?? {};
+
+    return reportChatMessage(roomId, messageId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ReportChatMessageMutationResult = NonNullable<
+  Awaited<ReturnType<typeof reportChatMessage>>
+>;
+export type ReportChatMessageMutationBody = BodyType<ReportMessageBody>;
+export type ReportChatMessageMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Report a chat message
+ */
+export const useReportChatMessage = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof reportChatMessage>>,
+    TError,
+    { roomId: string; messageId: number; data?: BodyType<ReportMessageBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof reportChatMessage>>,
+  TError,
+  { roomId: string; messageId: number; data?: BodyType<ReportMessageBody> },
+  TContext
+> => {
+  return useMutation(getReportChatMessageMutationOptions(options));
 };
 
 /**

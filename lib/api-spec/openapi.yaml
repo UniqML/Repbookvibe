@@ -200,6 +200,38 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ChatMessageItemResult"
+        "422":
+          description: Message blocked by moderation
+
+  /chats/{roomId}/messages/{messageId}/report:
+    post:
+      operationId: reportChatMessage
+      tags: [chats]
+      summary: Report a chat message
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: messageId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReportMessageBody"
+      responses:
+        "200":
+          description: Created report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReportItemResult"
 
   /music/search:
     get:
@@ -601,6 +633,45 @@ components:
           type: string
       required:
         - author
+
+    ReportMessageBody:
+      type: object
+      properties:
+        reason:
+          type: string
+
+    Report:
+      type: object
+      properties:
+        id:
+          type: integer
+        message_id:
+          type: integer
+        room_id:
+          type: string
+        reporter_user_id:
+          type: integer
+          nullable: true
+        reason:
+          type: string
+        status:
+          type: string
+        created_at:
+          type: string
+      required:
+        - id
+        - message_id
+        - room_id
+        - reason
+        - status
+
+    ReportItemResult:
+      type: object
+      properties:
+        item:
+          $ref: "#/components/schemas/Report"
+      required:
+        - item
 
     MusicTrack:
       type: object
