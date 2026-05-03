@@ -154,6 +154,24 @@ export interface SendMessageBody {
   image_url?: string;
 }
 
+export interface ReportMessageBody {
+  reason?: string;
+}
+
+export interface Report {
+  id: number;
+  message_id: number;
+  room_id: string;
+  reporter_user_id?: number | null;
+  reason: string;
+  status: string;
+  created_at?: string;
+}
+
+export interface ReportItemResult {
+  item: Report;
+}
+
 export interface MusicTrack {
   title: string;
   artist: string;

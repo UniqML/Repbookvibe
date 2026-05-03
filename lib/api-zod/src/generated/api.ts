@@ -252,6 +252,30 @@ export const SendChatMessageResponse = zod.object({
 });
 
 /**
+ * @summary Report a chat message
+ */
+export const ReportChatMessageParams = zod.object({
+  roomId: zod.coerce.string(),
+  messageId: zod.coerce.number(),
+});
+
+export const ReportChatMessageBody = zod.object({
+  reason: zod.string().optional(),
+});
+
+export const ReportChatMessageResponse = zod.object({
+  item: zod.object({
+    id: zod.number(),
+    message_id: zod.number(),
+    room_id: zod.string(),
+    reporter_user_id: zod.number().nullish(),
+    reason: zod.string(),
+    status: zod.string(),
+    created_at: zod.string().optional(),
+  }),
+});
+
+/**
  * @summary Search music via Deezer
  */
 export const searchMusicQueryLimitDefault = 8;
