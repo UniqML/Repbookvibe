@@ -1,0 +1,680 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: BookVibe API specification
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: books
+    description: Book library operations
+  - name: diary
+    description: Reading diary operations
+  - name: chats
+    description: Genre chat operations
+  - name: music
+    description: Music search operations
+  - name: images
+    description: Image search operations
+  - name: ai
+    description: AI diary helper operations
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /books/search:
+    get:
+      operationId: searchBooks
+      tags: [books]
+      summary: Search books from external catalogs
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 12
+      responses:
+        "200":
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookSearchResult"
+
+  /books:
+    get:
+      operationId: listBooks
+      tags: [books]
+      summary: List saved books
+      responses:
+        "200":
+          description: List of saved books
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookListResult"
+    post:
+      operationId: saveBook
+      tags: [books]
+      summary: Save or update a book
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SaveBookBody"
+      responses:
+        "200":
+          description: Saved book
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookItemResult"
+
+  /books/{bookId}:
+    delete:
+      operationId: deleteBook
+      tags: [books]
+      summary: Delete a saved book
+      parameters:
+        - name: bookId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResult"
+
+  /diary:
+    get:
+      operationId: listDiaryEntries
+      tags: [diary]
+      summary: List diary entries
+      responses:
+        "200":
+          description: List of diary entries
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiaryListResult"
+    post:
+      operationId: saveDiaryEntry
+      tags: [diary]
+      summary: Save a diary entry
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SaveDiaryBody"
+      responses:
+        "200":
+          description: Saved diary entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiaryItemResult"
+
+  /chats/rooms:
+    get:
+      operationId: listChatRooms
+      tags: [chats]
+      summary: List genre chat rooms
+      responses:
+        "200":
+          description: List of chat rooms
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatRoomListResult"
+
+  /chats/{roomId}/messages:
+    get:
+      operationId: listChatMessages
+      tags: [chats]
+      summary: List messages in a chat room
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 40
+      responses:
+        "200":
+          description: List of chat messages
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatMessageListResult"
+    post:
+      operationId: sendChatMessage
+      tags: [chats]
+      summary: Send a message to a chat room
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendMessageBody"
+      responses:
+        "200":
+          description: Sent message
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatMessageItemResult"
+
+  /music/search:
+    get:
+      operationId: searchMusic
+      tags: [music]
+      summary: Search music via Deezer
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 8
+      responses:
+        "200":
+          description: Music search results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MusicSearchResult"
+
+  /images/search:
+    get:
+      operationId: searchImages
+      tags: [images]
+      summary: Search images via Unsplash
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 6
+      responses:
+        "200":
+          description: Image search results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImageSearchResult"
+
+  /ai/diary-helper:
+    post:
+      operationId: askAiDiaryHelper
+      tags: [ai]
+      summary: Ask AI for diary writing ideas
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AiDiaryHelperBody"
+      responses:
+        "200":
+          description: AI response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiDiaryHelperResult"
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+
+    Book:
+      type: object
+      properties:
+        id:
+          type: integer
+        external_id:
+          type: string
+        source:
+          type: string
+        title:
+          type: string
+        author:
+          type: string
+        description:
+          type: string
+        cover:
+          type: string
+        pages:
+          type: integer
+        read_pages:
+          type: integer
+        isbn:
+          type: string
+        status:
+          type: string
+        shelf:
+          type: string
+        vibe:
+          type: array
+          items:
+            type: string
+        rating:
+          type: number
+        created_at:
+          type: string
+      required:
+        - id
+        - title
+        - status
+        - shelf
+        - vibe
+
+    BookSearchItem:
+      type: object
+      properties:
+        external_id:
+          type: string
+        source:
+          type: string
+        title:
+          type: string
+        author:
+          type: string
+        description:
+          type: string
+        cover:
+          type: string
+        pages:
+          type: integer
+        isbn:
+          type: string
+        genres:
+          type: array
+          items:
+            type: string
+      required:
+        - external_id
+        - source
+        - title
+
+    BookSearchResult:
+      type: object
+      properties:
+        query:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/BookSearchItem"
+      required:
+        - items
+
+    BookListResult:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Book"
+      required:
+        - items
+
+    BookItemResult:
+      type: object
+      properties:
+        item:
+          $ref: "#/components/schemas/Book"
+      required:
+        - item
+
+    SaveBookBody:
+      type: object
+      properties:
+        external_id:
+          type: string
+        source:
+          type: string
+        title:
+          type: string
+        author:
+          type: string
+        description:
+          type: string
+        cover:
+          type: string
+        pages:
+          type: integer
+        read_pages:
+          type: integer
+        isbn:
+          type: string
+        status:
+          type: string
+        shelf:
+          type: string
+        vibe:
+          type: array
+          items:
+            type: string
+        rating:
+          type: number
+      required:
+        - title
+        - status
+        - shelf
+
+    DeleteResult:
+      type: object
+      properties:
+        deleted:
+          type: boolean
+        id:
+          type: integer
+      required:
+        - deleted
+
+    DiaryEntry:
+      type: object
+      properties:
+        id:
+          type: integer
+        book_id:
+          type: integer
+        quote:
+          type: string
+        note:
+          type: string
+        ratings:
+          type: object
+          additionalProperties:
+            type: integer
+        music:
+          type: object
+          additionalProperties:
+            type: string
+        images:
+          type: array
+          items:
+            type: string
+        stickers:
+          type: array
+          items:
+            type: string
+        created_at:
+          type: string
+        updated_at:
+          type: string
+      required:
+        - id
+        - book_id
+
+    DiaryListResult:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/DiaryEntry"
+      required:
+        - items
+
+    DiaryItemResult:
+      type: object
+      properties:
+        item:
+          $ref: "#/components/schemas/DiaryEntry"
+      required:
+        - item
+
+    SaveDiaryBody:
+      type: object
+      properties:
+        book_id:
+          type: integer
+        quote:
+          type: string
+        note:
+          type: string
+        ratings:
+          type: object
+          additionalProperties:
+            type: integer
+        music:
+          type: object
+          additionalProperties:
+            type: string
+        images:
+          type: array
+          items:
+            type: string
+        stickers:
+          type: array
+          items:
+            type: string
+      required:
+        - book_id
+
+    ChatRoom:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        messages:
+          type: integer
+        last_message:
+          $ref: "#/components/schemas/ChatMessage"
+      required:
+        - id
+        - name
+
+    ChatMessage:
+      type: object
+      properties:
+        id:
+          type: integer
+        room_id:
+          type: string
+        author:
+          type: string
+        text:
+          type: string
+        reply_to:
+          type: integer
+          nullable: true
+        sticker:
+          type: string
+        image_url:
+          type: string
+        created_at:
+          type: string
+      required:
+        - id
+        - room_id
+        - author
+        - text
+
+    ChatRoomListResult:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChatRoom"
+      required:
+        - items
+
+    ChatMessageListResult:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChatMessage"
+      required:
+        - items
+
+    ChatMessageItemResult:
+      type: object
+      properties:
+        item:
+          $ref: "#/components/schemas/ChatMessage"
+      required:
+        - item
+
+    SendMessageBody:
+      type: object
+      properties:
+        author:
+          type: string
+        text:
+          type: string
+        reply_to:
+          type: integer
+          nullable: true
+        sticker:
+          type: string
+        image_url:
+          type: string
+      required:
+        - author
+
+    MusicTrack:
+      type: object
+      properties:
+        title:
+          type: string
+        artist:
+          type: string
+        album:
+          type: string
+        cover:
+          type: string
+        preview:
+          type: string
+        link:
+          type: string
+        source:
+          type: string
+      required:
+        - title
+        - artist
+
+    MusicSearchResult:
+      type: object
+      properties:
+        query:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/MusicTrack"
+      required:
+        - items
+
+    ImageItem:
+      type: object
+      properties:
+        title:
+          type: string
+        url:
+          type: string
+        thumb:
+          type: string
+        author:
+          type: string
+        source:
+          type: string
+      required:
+        - url
+
+    ImageSearchResult:
+      type: object
+      properties:
+        query:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ImageItem"
+      required:
+        - items
+
+    AiDiaryHelperBody:
+      type: object
+      properties:
+        book_title:
+          type: string
+        mood:
+          type: string
+        note:
+          type: string
+      required:
+        - book_title
+
+    AiDiaryHelperResult:
+      type: object
+      properties:
+        source:
+          type: string
+        result:
+          type: string
+      required:
+        - source
+        - result

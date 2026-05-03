@@ -1,0 +1,102 @@
+/* BookVibe Theme System */
+
+/* Themes */
+.theme-academia {
+  --accent: #b8895d;
+  --accent-2: #e0c3a1;
+  --paper: rgba(255,248,238,0.94);
+  --paper-soft: rgba(255,248,238,0.74);
+  --ink: #2c211b;
+  --muted: #7a6758;
+  --line: rgba(82,59,42,0.16);
+  --page-bg: #18110e;
+  --glow: rgba(198,143,84,0.3);
+}
+
+.theme-romance {
+  --accent: #c75f87;
+  --accent-2: #ffd6e5;
+  --paper: rgba(255,246,250,0.95);
+  --paper-soft: rgba(255,246,250,0.76);
+  --ink: #38202a;
+  --muted: #805768;
+  --line: rgba(150,68,103,0.17);
+  --page-bg: #26141c;
+  --glow: rgba(255,126,179,0.3);
+}
+
+.theme-forest {
+  --accent: #5d8b67;
+  --accent-2: #c8e3bf;
+  --paper: rgba(245,251,241,0.95);
+  --paper-soft: rgba(245,251,241,0.75);
+  --ink: #17291d;
+  --muted: #506858;
+  --line: rgba(39,96,54,0.17);
+  --page-bg: #101b13;
+  --glow: rgba(93,139,103,0.34);
+}
+
+.high-contrast {
+  --accent: #ffcf33;
+  --accent-2: #fff1a8;
+  --paper: #ffffff;
+  --ink: #000000;
+  --muted: #1c1c1c;
+  --line: #000000;
+  --page-bg: #000000;
+  --glow: rgba(255,207,51,0.2);
+}
+
+/* App Background */
+.app {
+  min-height: 100dvh;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at top left, var(--glow), transparent 38%), linear-gradient(135deg, var(--page-bg), #211813);
+}
+
+/* Phone Shell */
+.phone-shell {
+  width: 430px;
+  height: 920px;
+  max-height: 100dvh;
+  border-radius: 42px;
+  overflow: hidden;
+  background: var(--paper);
+  display: grid;
+  grid-template-rows: auto 1fr 92px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  position: relative;
+  color: var(--ink);
+  backdrop-filter: blur(10px);
+}
+
+@media (max-width: 520px) {
+  .phone-shell {
+    width: 100%;
+    height: 100dvh;
+    border-radius: 0;
+  }
+}
+
+/* Custom Scrollbar for phone shell */
+.phone-shell-content {
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.phone-shell-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.phone-shell-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.phone-shell-content::-webkit-scrollbar-thumb {
+  background-color: var(--line);
+  border-radius: 10px;
+}
