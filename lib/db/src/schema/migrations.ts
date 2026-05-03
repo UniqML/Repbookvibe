@@ -13,14 +13,20 @@ export async function runMigrations() {
         verification_code TEXT,
         is_verified BOOLEAN NOT NULL DEFAULT false,
         avatar_url TEXT,
+        avatar_seed TEXT,
         created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
       );
     `);
 
     // Add avatar_url column if it doesn't exist
     await db.execute(sql`
-      ALTER TABLE users 
+      ALTER TABLE users
       ADD COLUMN IF NOT EXISTS avatar_url TEXT;
+    `);
+
+    await db.execute(sql`
+      ALTER TABLE users
+      ADD COLUMN IF NOT EXISTS avatar_seed TEXT;
     `);
 
     // Add user_id to books table if it doesn't exist
@@ -33,6 +39,11 @@ export async function runMigrations() {
     await db.execute(sql`
       ALTER TABLE diary_entries 
       ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE CASCADE;
+    `);
+
+    await db.execute(sql`
+      ALTER TABLE chat_messages
+      ADD COLUMN IF NOT EXISTS author_avatar_seed TEXT;
     `);
 
     // Create ratings table if it doesn't exist

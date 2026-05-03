@@ -5,6 +5,7 @@ export type User = {
   displayName: string;
   email: string | null;
   avatarUrl?: string | null;
+  avatarSeed?: string | null;
   isAnonymous: boolean;
 };
 
@@ -15,7 +16,7 @@ interface AuthContextValue {
   register: (email: string, password: string, displayName: string) => Promise<{ userId: number }>;
   verifyCode: (email: string, code: string) => Promise<void>;
   loginEmail: (email: string, password: string) => Promise<void>;
-  updateProfile: (displayName?: string, avatarUrl?: string) => Promise<void>;
+  updateProfile: (displayName?: string, avatarUrl?: string, avatarSeed?: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -105,7 +106,7 @@ export function useAuthState() {
     saveAuth(data.user, data.token);
   }, [saveAuth]);
 
-  const updateProfile = useCallback(async (displayName?: string, avatarUrl?: string) => {
+  const updateProfile = useCallback(async (displayName?: string, avatarUrl?: string, avatarSeed?: string) => {
     const res = await fetch(`${API_URL}/auth/profile`, {
       method: 'POST',
       headers: {
@@ -114,7 +115,8 @@ export function useAuthState() {
       },
       body: JSON.stringify({
         ...(displayName && { displayName }),
-        ...(avatarUrl && { avatarUrl }),
+        ...(avatarUrl !== undefined && { avatarUrl }),
+        ...(avatarSeed !== undefined && { avatarSeed }),
       }),
     });
     const data = await res.json();

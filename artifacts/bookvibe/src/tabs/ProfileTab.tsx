@@ -7,9 +7,9 @@ import { useListBooks, useListDiaryEntries } from "@workspace/api-client-react";
 import type { Book } from "@workspace/api-client-react";
 import { useLanguage } from "@/hooks/useLanguage";
 import { BookCardModal } from "@/components/BookCardModal";
-import { Upload, LogOut, Target, Trophy } from "lucide-react";
-
-const AVATAR_EMOJIS = ["👤", "📚", "✨", "🌙", "🔥", "💫", "🎨", "🌟", "📖", "💎", "🎭", "🦋"];
+import { UserAvatar } from "@/components/UserAvatar";
+import { generateAvatarSeeds, getDefaultAvatarSeed } from "@/lib/avatar";
+import { LogOut, Target, Trophy } from "lucide-react";
 
 export function ProfileTab() {
   const { user, logout, updateProfile } = useAuth();
@@ -26,9 +26,8 @@ export function ProfileTab() {
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
   const [editingName, setEditingName] = useState(false);
   const [newName, setNewName] = useState(user?.displayName || "");
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showAvatarPicker, setShowAvatarPicker] = useState(false);
   const [updating, setUpdating] = useState(false);
-  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [showGoalModal, setShowGoalModal] = useState(false);
   const [goalInput, setGoalInput] = useState(goal?.targetBooks.toString() || "50");
   const [showAchievementsModal, setShowAchievementsModal] = useState(false);
@@ -42,7 +41,8 @@ export function ProfileTab() {
   };
 
   const displayName = user?.displayName || (t("guestAccount"));
-  const avatarUrl = user?.avatarUrl;
+  const avatarSeed = user?.avatarSeed || localStorage.getItem("bookvibe_avatar_seed") || getDefaultAvatarSeed(user);
+  const avatarOptions = generateAvatarSeeds(user?.email || displayName);
   const isGuest = user?.isAnonymous;
 
   const handleNameSave = async () => {
@@ -59,46 +59,16 @@ export function ProfileTab() {
     }
   };
 
-  const handleAvatarSelect = async (emoji: string) => {
+  const handleAvatarSelect = async (seed: string) => {
     setUpdating(true);
     try {
-      await updateProfile(undefined, emoji);
-      setShowEmojiPicker(false);
+      localStorage.setItem("bookvibe_avatar_seed", seed);
+      await updateProfile(undefined, undefined, seed);
+      setShowAvatarPicker(false);
     } catch (error) {
       console.error("Failed to update avatar:", error);
     }
     setUpdating(false);
-  };
-
-  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    
-    setUploadingAvatar(true);
-    try {
-      const reader = new FileReader();
-      reader.onload = async (event) => {
-        const dataUrl = event.target?.result as string;
-        const apiUrl = import.meta.env.VITE_API_URL || '/api';
-        const response = await fetch(`${apiUrl}/auth/profile`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${localStorage.getItem("bookvibe_token")}`,
-          },
-          body: JSON.stringify({ avatarUrl: dataUrl }),
-        });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error);
-        await updateProfile();
-        setShowEmojiPicker(false);
-      };
-      reader.readAsDataURL(file);
-    } catch (error) {
-      console.error("Failed to upload avatar:", error);
-    } finally {
-      setUploadingAvatar(false);
-    }
   };
 
   const handleSetGoal = () => {
@@ -131,31 +101,20 @@ export function ProfileTab() {
         panel(
           <div>
             <div style={{ display: "flex", gap: 14, alignItems: "flex-start", marginBottom: 14 }}>
-              <div style={{
+              <button style={{
                 width: 80, height: 80, borderRadius: 22,
-                background: avatarUrl?.startsWith("data:") || avatarUrl?.startsWith("http")
-                  ? "transparent"
-                  : avatarUrl?.match(/^[\p{L}\p{N}\p{P}\p{S}]{1,2}$/u) 
-                    ? "linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent), #1f1510 40%))"
-                    : "var(--line)",
-                color: "white", display: "flex", alignItems: "center", justifyContent: "center",
-                fontWeight: 800, fontSize: 40, flexShrink: 0,
-                boxShadow: "0 6px 18px color-mix(in srgb, var(--accent), transparent 60%)",
+                border: 0, padding: 0, background: "transparent",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                flexShrink: 0,
                 cursor: "pointer",
-                position: "relative",
                 transition: "transform 0.2s",
-                overflow: "hidden",
               }}
               onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.05)")}
               onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
-              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+              onClick={() => setShowAvatarPicker(!showAvatarPicker)}
               title="Нажмите для изменения аватарки">
-                {avatarUrl?.startsWith("data:") || avatarUrl?.startsWith("http") ? (
-                  <img src={avatarUrl} alt="avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                ) : (
-                  avatarUrl
-                )}
-              </div>
+                <UserAvatar seed={avatarSeed} name={displayName} email={user?.email} id={user?.id} size={80} radius={22} />
+              </button>
               
               <div style={{ flex: 1 }}>
                 {editingName ? (
@@ -239,7 +198,7 @@ export function ProfileTab() {
               </button>
             </div>
 
-            {showEmojiPicker && (
+            {showAvatarPicker && (
               <div style={{
                 display: "grid",
                 gridTemplateColumns: "repeat(4, 1fr)",
@@ -249,49 +208,32 @@ export function ProfileTab() {
                 borderRadius: 16,
                 marginBottom: 12,
               }}>
-                <label style={{
+                <div style={{
                   gridColumn: "1 / -1",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 8,
-                  border: "1px dashed var(--accent)",
-                  borderRadius: 12,
-                  padding: "10px",
-                  background: "rgba(255,255,255,0.65)",
-                  cursor: uploadingAvatar ? "default" : "pointer",
-                  fontWeight: 600,
-                  fontSize: 13,
-                  color: "var(--accent)",
-                  opacity: uploadingAvatar ? 0.6 : 1,
+                  fontSize: 12,
+                  color: "var(--muted)",
+                  fontWeight: 700,
+                  padding: "0 2px 4px",
                 }}>
-                  <Upload size={14} />
-                  {uploadingAvatar ? "Загружаю..." : "Загрузить фото"}
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleAvatarUpload}
-                    disabled={uploadingAvatar}
-                    style={{ display: "none" }}
-                  />
-                </label>
-                {AVATAR_EMOJIS.map((emoji) => (
+                  Сменить аватарку
+                </div>
+                {avatarOptions.map((seed) => (
                   <button
-                    key={emoji}
-                    onClick={() => handleAvatarSelect(emoji)}
+                    key={seed}
+                    onClick={() => handleAvatarSelect(seed)}
                     disabled={updating}
                     style={{
-                      border: avatarUrl === emoji ? "2px solid var(--accent)" : "1px solid var(--line)",
+                      border: avatarSeed === seed ? "2px solid var(--accent)" : "1px solid var(--line)",
                       borderRadius: 12,
-                      padding: "10px",
+                      padding: 4,
                       background: "rgba(255,255,255,0.65)",
-                      fontSize: 24,
                       cursor: updating ? "default" : "pointer",
-                      fontWeight: 700,
                       transition: "all 0.15s",
+                      display: "flex",
+                      justifyContent: "center",
                     }}
                   >
-                    {emoji}
+                    <UserAvatar seed={seed} size={48} radius={10} />
                   </button>
                 ))}
               </div>
@@ -442,6 +384,25 @@ export function ProfileTab() {
           </div>
         </div>,
         lang === "ru" ? "Статистика" : "Statistics"
+      )}
+
+      {!isGuest && panel(
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {[
+            { name: "Лина", seed: "bookvibe-friend-lina", meta: "Фэнтези · 34 книги" },
+            { name: "Mira", seed: "bookvibe-friend-mira", meta: "Romance · 21 books" },
+            { name: "Алекс", seed: "bookvibe-friend-alex", meta: "Детективы · 18 книг" },
+          ].map((friend) => (
+            <div key={friend.seed} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <UserAvatar seed={friend.seed} name={friend.name} size={32} radius={10} />
+              <div>
+                <div style={{ color: "var(--ink)", fontSize: 13, fontWeight: 800 }}>{friend.name}</div>
+                <div style={{ color: "var(--muted)", fontSize: 11 }}>{friend.meta}</div>
+              </div>
+            </div>
+          ))}
+        </div>,
+        lang === "ru" ? "Друзья" : "Friends"
       )}
 
       {!isGuest && panel(

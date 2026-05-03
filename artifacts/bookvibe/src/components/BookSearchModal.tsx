@@ -52,18 +52,20 @@ export function BookSearchModal({ open, onClose }: BookSearchModalProps) {
   const handleAddBook = async (result: SearchResult) => {
     try {
       await saveBook({
-        external_id: result.external_id,
-        source: result.source,
-        title: result.title,
-        author: result.author,
-        description: result.description || "",
-        cover: result.cover || "",
-        pages: result.pages || 0,
-        isbn: result.isbn || "",
-        status,
-        shelf: "Моя библиотека",
-        vibe: result.genres || [],
-        rating: 0,
+        data: {
+          external_id: result.external_id,
+          source: result.source,
+          title: result.title,
+          author: result.author,
+          description: result.description || "",
+          cover: result.cover || "",
+          pages: result.pages || 0,
+          isbn: result.isbn || "",
+          status,
+          shelf: "Моя библиотека",
+          vibe: result.genres || [],
+          rating: 0,
+        },
       });
       qc.invalidateQueries({ queryKey: getListBooksQueryKey() });
       setResults([]);

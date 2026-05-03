@@ -10,6 +10,7 @@ export interface ChatMessage {
   id: number;
   room_id: string;
   author: string;
+  author_avatar_seed?: string | null;
   text: string;
   reply_to?: number | null;
   sticker?: string;

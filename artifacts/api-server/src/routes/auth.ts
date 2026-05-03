@@ -24,6 +24,27 @@ function generateVerificationCode(): string {
   return Math.random().toString().slice(2, 8);
 }
 
+function createAvatarSeed(email: string): string {
+  return email.trim().toLowerCase();
+}
+
+function toAuthUser(user: {
+  id: number;
+  email: string | null;
+  displayName: string;
+  avatarUrl?: string | null;
+  avatarSeed?: string | null;
+}) {
+  return {
+    id: user.id,
+    email: user.email,
+    displayName: user.displayName,
+    avatarUrl: user.avatarUrl || null,
+    avatarSeed: user.avatarSeed || createAvatarSeed(user.email || user.displayName),
+    isAnonymous: false,
+  };
+}
+
 // Send verification email using Nodemailer
 async function sendVerificationEmail(email: string, code: string) {
   try {
@@ -88,6 +109,7 @@ router.post("/auth/register", async (req: AuthRequest, res: Response) => {
         passwordHash,
         verificationCode,
         isVerified: false,
+        avatarSeed: createAvatarSeed(email),
       })
       .returning();
 
@@ -143,12 +165,7 @@ router.post("/auth/verify", async (req: AuthRequest, res: Response) => {
     res.json({
       message: "Email verified successfully",
       token,
-      user: {
-        id: user.id,
-        email: user.email,
-        displayName: user.displayName,
-        isAnonymous: false,
-      },
+      user: toAuthUser(user),
     });
   } catch (error) {
     res.status(500).json({ error: "Verification failed" });
@@ -190,12 +207,7 @@ router.post("/auth/login", async (req: AuthRequest, res: Response) => {
 
     res.json({
       token,
-      user: {
-        id: user.id,
-        email: user.email,
-        displayName: user.displayName,
-        isAnonymous: false,
-      },
+      user: toAuthUser(user),
     });
   } catch (error) {
     res.status(500).json({ error: "Login failed" });
@@ -264,10 +276,11 @@ router.post("/auth/profile", async (req: any, res) => {
     return;
   }
 
-  const { displayName, avatarUrl } = req.body;
+  const { displayName, avatarUrl, avatarSeed } = req.body;
   const updates: any = {};
   if (displayName) updates.displayName = displayName;
   if (avatarUrl !== undefined) updates.avatarUrl = avatarUrl;
+  if (avatarSeed !== undefined) updates.avatarSeed = avatarSeed;
 
   if (Object.keys(updates).length === 0) {
     res.status(400).json({ error: "Nothing to update" });
@@ -282,18 +295,13 @@ router.post("/auth/profile", async (req: any, res) => {
       displayName: usersTable.displayName,
       email: usersTable.email,
       avatarUrl: usersTable.avatarUrl,
+      avatarSeed: usersTable.avatarSeed,
     })
     .from(usersTable)
     .where(eq(usersTable.id, userId));
 
   res.json({
-    user: {
-      id: user.id,
-      displayName: user.displayName,
-      email: user.email,
-      avatarUrl: user.avatarUrl || null,
-      isAnonymous: false,
-    },
+    user: toAuthUser(user),
   });
 });
 

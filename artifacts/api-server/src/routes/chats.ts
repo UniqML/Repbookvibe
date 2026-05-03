@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, chatMessagesTable } from "@workspace/db";
+import { db, chatMessagesTable, usersTable } from "@workspace/db";
 import { eq, desc, sql } from "drizzle-orm";
 import { ListChatMessagesQueryParams, SendChatMessageParams, SendChatMessageBody } from "@workspace/api-zod";
 
@@ -26,6 +26,7 @@ async function ensureWelcomeMessages() {
       await db.insert(chatMessagesTable).values({
         roomId: room.id,
         author: "BookVibe",
+        authorAvatarSeed: "bookvibe-official",
         text: `Добро пожаловать в чат «${room.name}». Делитесь рекомендациями без спойлеров.`,
         sticker: "",
         imageUrl: "",
@@ -89,6 +90,16 @@ router.post("/chats/:roomId/messages", async (req, res) => {
   }
   const { roomId } = paramsParsed.data;
   const body = bodyParsed.data;
+  let avatarSeed = body.author_avatar_seed?.trim() || body.author?.trim() || "Reader";
+  const userId = (req as { userId?: number }).userId;
+  if (userId && userId > 0) {
+    const [user] = await db
+      .select({ avatarSeed: usersTable.avatarSeed, email: usersTable.email, displayName: usersTable.displayName })
+      .from(usersTable)
+      .where(eq(usersTable.id, userId))
+      .limit(1);
+    avatarSeed = user?.avatarSeed || user?.email || user?.displayName || avatarSeed;
+  }
   if (!body.text?.trim() && !body.sticker?.trim() && !body.image_url?.trim()) {
     res.status(422).json({ error: "Message must contain text, sticker, or image" });
     return;
@@ -96,6 +107,7 @@ router.post("/chats/:roomId/messages", async (req, res) => {
   const [msg] = await db.insert(chatMessagesTable).values({
     roomId,
     author: body.author?.trim() || "Reader",
+    authorAvatarSeed: avatarSeed,
     text: body.text?.trim() || "",
     replyTo: body.reply_to ?? null,
     sticker: body.sticker?.trim() || "",
