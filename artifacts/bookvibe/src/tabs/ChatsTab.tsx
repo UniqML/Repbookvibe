@@ -10,6 +10,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import type { User } from "@/hooks/useAuth";
 import { AuthForm } from "@/components/AuthForm";
 import { useLanguage } from "@/hooks/useLanguage";
+import { UserAvatar } from "@/components/UserAvatar";
 
 interface ChatsTabProps {
   user: User | null;
@@ -99,7 +100,7 @@ export function ChatsTab({ user }: ChatsTabProps) {
   const handleSend = async () => {
     if (!msgText.trim() || !activeRoom || !user || user.isAnonymous) return;
     try {
-      await sendMsg({ roomId: activeRoom, data: { author: user.displayName, text: msgText.trim() } });
+      await sendMsg({ roomId: activeRoom, data: { author: user.displayName, author_avatar_seed: user.avatarSeed || user.email || user.displayName, text: msgText.trim() } });
       setMsgText("");
       qc.invalidateQueries({ queryKey: getListChatMessagesQueryKey(activeRoom) });
     } catch { /* ignore */ }
@@ -146,26 +147,33 @@ export function ChatsTab({ user }: ChatsTabProps) {
           {messages.map(msg => {
             const isMe = msg.author === user.displayName;
             return (
-              <div key={msg.id} style={{ display: "flex", flexDirection: "column", alignItems: isMe ? "flex-end" : "flex-start" }}>
+              <div key={msg.id} style={{ display: "flex", gap: 8, alignItems: "flex-end", justifyContent: isMe ? "flex-end" : "flex-start" }}>
                 {!isMe && (
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
-                    <span style={{ fontSize: 11, color: "var(--accent)", fontWeight: 700 }}>{msg.author}</span>
-                  </div>
+                  <UserAvatar seed={msg.author_avatar_seed || msg.author} name={msg.author} size={40} radius={12} />
                 )}
-                <div style={{
-                  maxWidth: "80%",
-                  background: isMe ? "var(--accent)" : "var(--paper-soft)",
-                  color: isMe ? "white" : "var(--ink)",
-                  borderRadius: isMe ? "18px 18px 4px 18px" : "18px 18px 18px 4px",
-                  padding: "10px 14px",
-                  fontSize: 14,
-                  border: isMe ? "none" : "1px solid var(--line)",
-                }}>
-                  {msg.text}
+                <div style={{ display: "flex", flexDirection: "column", alignItems: isMe ? "flex-end" : "flex-start", maxWidth: "80%" }}>
+                  {!isMe && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                      <span style={{ fontSize: 11, color: "var(--accent)", fontWeight: 700 }}>{msg.author}</span>
+                    </div>
+                  )}
+                  <div style={{
+                    background: isMe ? "var(--accent)" : "var(--paper-soft)",
+                    color: isMe ? "white" : "var(--ink)",
+                    borderRadius: isMe ? "18px 18px 4px 18px" : "18px 18px 18px 4px",
+                    padding: "10px 14px",
+                    fontSize: 14,
+                    border: isMe ? "none" : "1px solid var(--line)",
+                  }}>
+                    {msg.text}
+                  </div>
+                  <span style={{ fontSize: 10, color: "var(--muted)", marginTop: 3 }}>
+                    {msg.created_at ? new Date(msg.created_at).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" }) : ""}
+                  </span>
                 </div>
-                <span style={{ fontSize: 10, color: "var(--muted)", marginTop: 3 }}>
-                  {msg.created_at ? new Date(msg.created_at).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" }) : ""}
-                </span>
+                {isMe && (
+                  <UserAvatar seed={user.avatarSeed || user.email || user.displayName} name={user.displayName} size={40} radius={12} />
+                )}
               </div>
             );
           })}

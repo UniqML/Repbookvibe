@@ -70,6 +70,7 @@ export const ListBooksResponse = zod.object({
  * @summary Save or update a book
  */
 export const SaveBookBody = zod.object({
+  id: zod.number().optional(),
   external_id: zod.string().optional(),
   source: zod.string().optional(),
   title: zod.string(),
@@ -210,6 +211,7 @@ export const ListChatMessagesResponse = zod.object({
       id: zod.number(),
       room_id: zod.string(),
       author: zod.string(),
+      author_avatar_seed: zod.string().nullish(),
       text: zod.string(),
       reply_to: zod.number().nullish(),
       sticker: zod.string().optional(),
@@ -228,6 +230,7 @@ export const SendChatMessageParams = zod.object({
 
 export const SendChatMessageBody = zod.object({
   author: zod.string(),
+  author_avatar_seed: zod.string().optional(),
   text: zod.string().optional(),
   reply_to: zod.number().nullish(),
   sticker: zod.string().optional(),
@@ -239,6 +242,7 @@ export const SendChatMessageResponse = zod.object({
     id: zod.number(),
     room_id: zod.string(),
     author: zod.string(),
+    author_avatar_seed: zod.string().nullish(),
     text: zod.string(),
     reply_to: zod.number().nullish(),
     sticker: zod.string().optional(),

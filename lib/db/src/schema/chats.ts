@@ -6,6 +6,7 @@ export const chatMessagesTable = pgTable("chat_messages", {
   id: serial("id").primaryKey(),
   roomId: text("room_id").notNull(),
   author: text("author").notNull().default("Reader"),
+  authorAvatarSeed: text("author_avatar_seed"),
   text: text("text").notNull().default(""),
   replyTo: integer("reply_to"),
   sticker: text("sticker").notNull().default(""),

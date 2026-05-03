@@ -53,6 +53,7 @@ export interface BookItemResult {
 }
 
 export interface SaveBookBody {
+  id?: number;
   external_id?: string;
   source?: string;
   title: string;
@@ -116,6 +117,7 @@ export interface ChatMessage {
   id: number;
   room_id: string;
   author: string;
+  author_avatar_seed?: string | null;
   text: string;
   reply_to?: number | null;
   sticker?: string;
@@ -145,6 +147,7 @@ export interface ChatMessageItemResult {
 
 export interface SendMessageBody {
   author: string;
+  author_avatar_seed?: string;
   text?: string;
   reply_to?: number | null;
   sticker?: string;

@@ -1,7 +1,9 @@
-import { X, Check, Globe, Palette, LogOut, LogIn } from "lucide-react";
+import { X, Check, Globe, Palette, LogOut, LogIn, Sparkles } from "lucide-react";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useAuth } from "@/hooks/useAuth";
 import type { Lang } from "@/i18n/translations";
+import { UserAvatar } from "@/components/UserAvatar";
+import { generateAvatarSeeds, getDefaultAvatarSeed } from "@/lib/avatar";
 
 type Theme = "academia" | "romance" | "forest" | "contrast";
 
@@ -27,9 +29,20 @@ const LANG_OPTIONS: { id: Lang; flag: string; label: (t: ReturnType<typeof useLa
 
 export function SettingsModal({ open, onClose, theme, onThemeChange }: SettingsModalProps) {
   const { t, lang, setLang } = useLanguage();
-  const { user, logout } = useAuth();
+  const { user, logout, updateProfile } = useAuth();
 
   if (!open) return null;
+
+  const displayName = user?.displayName || t("guestAccount");
+  const avatarSeed = user?.avatarSeed || localStorage.getItem("bookvibe_avatar_seed") || getDefaultAvatarSeed(user);
+  const avatarSeeds = generateAvatarSeeds(user?.email || displayName);
+
+  const selectAvatarSeed = async (seed: string) => {
+    localStorage.setItem("bookvibe_avatar_seed", seed);
+    if (user && !user.isAnonymous) {
+      await updateProfile(undefined, undefined, seed);
+    }
+  };
 
   const section = (title: string, icon: React.ReactNode, children: React.ReactNode) => (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -111,6 +124,38 @@ export function SettingsModal({ open, onClose, theme, onThemeChange }: SettingsM
                   {lang === opt.id && <Check size={15} style={{ color: "var(--accent)" }} />}
                 </button>
               ))}
+            </div>
+          )}
+
+          {section("Аватарка", <Sparkles size={14} />,
+            <div style={{ padding: 14 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
+                <UserAvatar seed={avatarSeed} name={displayName} email={user?.email} id={user?.id} size={40} radius={12} />
+                <div>
+                  <div style={{ color: "var(--ink)", fontSize: 14, fontWeight: 800 }}>Сменить аватарку</div>
+                  <div style={{ color: "var(--muted)", fontSize: 12 }}>12 вариантов DiceBear по вашему email</div>
+                </div>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
+                {avatarSeeds.map((seed) => (
+                  <button
+                    key={seed}
+                    onClick={() => selectAvatarSeed(seed)}
+                    style={{
+                      border: avatarSeed === seed ? "2px solid var(--accent)" : "1px solid var(--line)",
+                      borderRadius: 14,
+                      padding: 6,
+                      background: "rgba(255,255,255,0.7)",
+                      cursor: "pointer",
+                      display: "flex",
+                      justifyContent: "center",
+                    }}
+                    title="Выбрать аватарку"
+                  >
+                    <UserAvatar seed={seed} size={46} radius={12} />
+                  </button>
+                ))}
+              </div>
             </div>
           )}
 

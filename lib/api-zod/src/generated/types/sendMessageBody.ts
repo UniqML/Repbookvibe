@@ -8,6 +8,7 @@
 
 export interface SendMessageBody {
   author: string;
+  author_avatar_seed?: string;
   text?: string;
   reply_to?: number | null;
   sticker?: string;
