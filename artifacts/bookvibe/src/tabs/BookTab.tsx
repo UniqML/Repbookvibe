@@ -131,6 +131,9 @@ export function BookTab() {
   const [savedDiary, setSavedDiary] = useState(false);
 
   // Timer state
+  const TIMER_RUNNING_KEY = "bookvibe_reading_timer_running";
+  const TIMER_SECONDS_KEY = "bookvibe_reading_timer_seconds";
+  const TIMER_UPDATED_AT_KEY = "bookvibe_reading_timer_updated_at";
   const [timerRunning, setTimerRunning] = useState(false);
   const [timerSeconds, setTimerSeconds] = useState(0);
   const [showSession, setShowSession] = useState(false);
@@ -146,10 +149,29 @@ export function BookTab() {
   const progressPct = pages > 0 ? Math.min(100, Math.round(readPagesVal / pages * 100)) : 0;
 
   useEffect(() => {
+    try {
+      const savedRunning = localStorage.getItem(TIMER_RUNNING_KEY) === "true";
+      const savedSeconds = Number(localStorage.getItem(TIMER_SECONDS_KEY) || "0");
+      const savedUpdatedAt = Number(localStorage.getItem(TIMER_UPDATED_AT_KEY) || "0");
+      const extraSeconds = savedRunning && savedUpdatedAt > 0 ? Math.max(0, Math.floor((Date.now() - savedUpdatedAt) / 1000)) : 0;
+      setTimerRunning(savedRunning);
+      setTimerSeconds(savedSeconds + extraSeconds);
+    } catch {}
+  }, []);
+
+  useEffect(() => {
     if (!timerRunning) return;
     const id = setInterval(() => setTimerSeconds(s => s + 1), 1000);
     return () => clearInterval(id);
   }, [timerRunning]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(TIMER_RUNNING_KEY, timerRunning ? "true" : "false");
+      localStorage.setItem(TIMER_SECONDS_KEY, String(timerSeconds));
+      localStorage.setItem(TIMER_UPDATED_AT_KEY, String(Date.now()));
+    } catch {}
+  }, [timerRunning, timerSeconds]);
 
   useEffect(() => {
     if (activeBook && pickerPage === null) {
@@ -349,7 +371,7 @@ export function BookTab() {
                   </button>
                   {timerSeconds > 0 && (
                     <button
-                      onClick={() => { setTimerRunning(false); setTimerSeconds(0); }}
+                      onClick={() => { setTimerRunning(false); setTimerSeconds(0); try { localStorage.removeItem(TIMER_RUNNING_KEY); localStorage.removeItem(TIMER_SECONDS_KEY); localStorage.removeItem(TIMER_UPDATED_AT_KEY); } catch {} }}
                       style={{
                         border: "1.5px solid rgba(255,255,255,0.3)", borderRadius: 14, padding: "7px 14px",
                         background: "rgba(0,0,0,0.15)", color: "rgba(255,255,255,0.8)",
