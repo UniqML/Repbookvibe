@@ -31,7 +31,7 @@ function formatTimer(s: number) {
 function PagePicker({ value, max, onChange }: { value: number; max: number; onChange: (v: number) => void }) {
   const listRef = useRef<HTMLDivElement>(null);
   const ITEM_H = 40;
-  const VISIBLE = 5;
+  const VISIBLE = 3;
   const pagesArr = Array.from({ length: Math.max(max, 1) }, (_, i) => i + 1);
 
   useEffect(() => {

@@ -4,6 +4,7 @@ import { TrendingUp, BookOpen, Flame, ChevronLeft, ChevronRight, BarChart2, Cale
 import { useState } from "react";
 import { getSessionsByDate } from "@/hooks/useReadingSessions";
 import type { ReadingSession } from "@/hooks/useReadingSessions";
+import { pluralize } from "@/lib/pluralize";
 import {
   PieChart, Pie, Cell, Tooltip, ResponsiveContainer,
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -38,17 +39,16 @@ function calcStreak(sessionMap: Record<string, ReadingSession[]>): number {
 function DayCell({ day, sessions, isToday }: { day: number; sessions: ReadingSession[]; isToday: boolean }) {
   const hasBooks = sessions.length > 0;
   const totalPagesRead = sessions.reduce((sum, s) => sum + s.pagesRead, 0);
-  // Intensity: 0-20 = light, 20-50 = medium, 50+ = intense
   const intensity = totalPagesRead > 50 ? "intense" : totalPagesRead > 20 ? "medium" : "light";
-  
-  const bgColor = !hasBooks 
+
+  const bgColor = !hasBooks
     ? isToday ? "color-mix(in srgb, var(--accent), white 75%)" : "rgba(0,0,0,0.04)"
     : intensity === "intense" ? "color-mix(in srgb, var(--accent), white 30%)"
     : intensity === "medium" ? "color-mix(in srgb, var(--accent), white 60%)"
     : "color-mix(in srgb, var(--accent), white 85%)";
-  
+
   const borderColor = isToday ? "var(--accent)" : hasBooks ? "color-mix(in srgb, var(--accent), white 40%)" : "transparent";
-  
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 2, minHeight: 72 }}>
       <span style={{
@@ -58,57 +58,71 @@ function DayCell({ day, sessions, isToday }: { day: number; sessions: ReadingSes
       }}>
         {day}
       </span>
-      <div style={{ 
+      <div style={{
         flex: 1, position: "relative", minHeight: 56,
         background: bgColor,
         borderRadius: 8,
         border: `1.5px solid ${borderColor}`,
         padding: 4,
         display: "flex",
+        flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
+        gap: 2,
         transition: "all 0.2s",
       }}>
         {hasBooks ? (
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2, width: "100%" }}>
-            {sessions.slice(0, 2).map((session, idx) => (
-              <div
-                key={idx}
-                title={session.bookTitle}
-                style={{
-                  width: "100%",
-                  height: idx === 0 ? 24 : 16,
-                  borderRadius: 4,
-                  overflow: "hidden",
-                  background: "rgba(255,255,255,0.6)",
-                  border: "1px solid rgba(255,255,255,0.8)",
-                  display: "flex",
-                  alignItems: "center",
-                  fontSize: 9,
-                  color: "var(--muted)",
-                  paddingLeft: 4,
-                }}
-              >
-                {session.bookCover ? (
-                  <img src={session.bookCover} alt={session.bookTitle}
-                    style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                ) : (
-                  <span>📖</span>
-                )}
-              </div>
-            ))}
-            {sessions.length > 2 && (
+          <>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2, width: "100%" }}>
+              {sessions.slice(0, 2).map((session, idx) => (
+                <div
+                  key={idx}
+                  title={session.bookTitle}
+                  style={{
+                    width: "100%",
+                    height: idx === 0 ? 24 : 16,
+                    borderRadius: 4,
+                    overflow: "hidden",
+                    background: "rgba(255,255,255,0.6)",
+                    border: "1px solid rgba(255,255,255,0.8)",
+                    display: "flex",
+                    alignItems: "center",
+                    fontSize: 9,
+                    color: "var(--muted)",
+                    paddingLeft: 4,
+                  }}
+                >
+                  {session.bookCover ? (
+                    <img src={session.bookCover} alt={session.bookTitle}
+                      style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  ) : (
+                    <span>📖</span>
+                  )}
+                </div>
+              ))}
+              {sessions.length > 2 && (
+                <div style={{
+                  width: 20, height: 20, borderRadius: "50%",
+                  background: "var(--accent)", color: "white",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 9, fontWeight: 800,
+                  boxShadow: "0 2px 4px rgba(0,0,0,0.15)",
+                }}>
+                  +{sessions.length - 2}
+                </div>
+              )}
+            </div>
+            {totalPagesRead > 0 && (
               <div style={{
-                width: 20, height: 20, borderRadius: "50%",
-                background: "var(--accent)", color: "white",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 9, fontWeight: 800,
-                boxShadow: "0 2px 4px rgba(0,0,0,0.15)",
+                fontSize: 8, fontWeight: 700,
+                color: "var(--accent)",
+                lineHeight: 1,
+                marginTop: 1,
               }}>
-                +{sessions.length - 2}
+                {totalPagesRead}с
               </div>
             )}
-          </div>
+          </>
         ) : isToday ? (
           <span style={{ fontSize: 20 }}>📖</span>
         ) : null}
@@ -129,8 +143,7 @@ function CalendarView({ books }: { books: Book[] }) {
 
   const firstDay = new Date(viewYear, viewMonth, 1);
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
-  
-  // Stats for current month
+
   let readingDaysThisMonth = 0;
   let totalPagesThisMonth = 0;
   for (let i = 1; i <= daysInMonth; i++) {
@@ -163,8 +176,8 @@ function CalendarView({ books }: { books: Book[] }) {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
         {[
           { icon: TrendingUp, label: "Страниц", value: totalPages },
-          { icon: BookOpen, label: "Книг", value: finished },
-          { icon: Flame, label: "Дней подряд", value: streak },
+          { icon: BookOpen, label: finished === 1 ? "Книга" : finished >= 2 && finished <= 4 ? "Книги" : "Книг", value: finished },
+          { icon: Flame, label: `${pluralize(streak, "день", "дня", "дней")} подряд`, value: streak },
         ].map(({ icon: Icon, label, value }) => (
           <div key={label} style={{ border: "1px solid var(--line)", background: "var(--paper-soft)", borderRadius: 18, padding: "12px 10px", display: "grid", gap: 3 }}>
             <Icon size={16} style={{ color: "var(--accent)" }} />
@@ -175,7 +188,6 @@ function CalendarView({ books }: { books: Book[] }) {
       </div>
 
       <div style={{ border: "1px solid var(--line)", background: "var(--paper-soft)", borderRadius: 20, padding: "14px 10px" }}>
-        {/* Month header with stats */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
           <button onClick={prevMonth} style={{ border: 0, background: "transparent", color: "var(--accent)", cursor: "pointer", padding: 4, display: "flex" }}>
             <ChevronLeft size={18} />
@@ -185,17 +197,16 @@ function CalendarView({ books }: { books: Book[] }) {
               {MONTH_NAMES[viewMonth]} {viewYear}
             </div>
             <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>
-              {readingDaysThisMonth} из {daysInMonth} дней ({readingPercentage}%)
+              {readingDaysThisMonth} из {daysInMonth} {pluralize(daysInMonth, "дня", "дней", "дней")} ({readingPercentage}%)
             </div>
           </div>
           <button onClick={nextMonth} style={{ border: 0, background: "transparent", color: "var(--accent)", cursor: "pointer", padding: 4, display: "flex" }}>
             <ChevronRight size={18} />
           </button>
         </div>
-        
-        {/* Month motivation */}
+
         {readingPercentage > 0 && (
-          <div style={{ 
+          <div style={{
             background: "linear-gradient(135deg, color-mix(in srgb, var(--accent), white 85%), color-mix(in srgb, var(--accent-2), white 80%))",
             borderRadius: 12, padding: 10, marginBottom: 12, textAlign: "center"
           }}>
@@ -203,7 +214,7 @@ function CalendarView({ books }: { books: Book[] }) {
               {readingPercentage === 100 ? "🔥 Вы читаете каждый день!" : readingPercentage >= 70 ? "🌟 Отличный месяц!" : "📚 Хороший прогресс!"}
             </div>
             <div style={{ fontSize: 11, color: "var(--accent)", marginTop: 2 }}>
-              {totalPagesThisMonth} страниц прочитано в этом месяце
+              {totalPagesThisMonth} {pluralize(totalPagesThisMonth, "страница", "страницы", "страниц")} прочитано в этом месяце
             </div>
           </div>
         )}
@@ -241,7 +252,7 @@ function CalendarView({ books }: { books: Book[] }) {
               <div style={{ fontSize: 11, color: "var(--muted)" }}>{currentBook.read_pages || 0} / {currentBook.pages || "?"} стр.</div>
               {daysToFinish && (
                 <div style={{ marginTop: 6, padding: "6px 10px", background: "color-mix(in srgb, var(--accent-2), white 30%)", borderRadius: 10, fontSize: 12, color: "var(--accent)", fontWeight: 600 }}>
-                  При 35 стр/день: ещё {daysToFinish} дней
+                  При 35 стр/день: ещё {daysToFinish} {pluralize(daysToFinish, "день", "дня", "дней")}
                 </div>
               )}
             </div>
@@ -256,12 +267,35 @@ function StatsView({ books }: { books: Book[] }) {
   const [genreFilter, setGenreFilter] = useState<string[]>([]);
   const [pagesFilter, setPagesFilter] = useState<"any" | "short" | "medium" | "long">("any");
   const [ratingFilter, setRatingFilter] = useState<"any" | "high" | "top">("any");
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [pendingGenre, setPendingGenre] = useState<string[]>([]);
+  const [pendingPages, setPendingPages] = useState<"any" | "short" | "medium" | "long">("any");
+  const [pendingRating, setPendingRating] = useState<"any" | "high" | "top">("any");
+
+  const openFilter = () => {
+    setPendingGenre(genreFilter);
+    setPendingPages(pagesFilter);
+    setPendingRating(ratingFilter);
+    setFilterOpen(true);
+  };
+
+  const applyFilter = () => {
+    setGenreFilter(pendingGenre);
+    setPagesFilter(pendingPages);
+    setRatingFilter(pendingRating);
+    setFilterOpen(false);
+  };
+
+  const resetFilter = () => {
+    setPendingGenre([]);
+    setPendingPages("any");
+    setPendingRating("any");
+  };
 
   const finished = books.filter(b => b.status === "Прочитано");
   const totalPages = books.reduce((acc, b) => acc + (b.read_pages || 0), 0);
   const totalBooks = finished.length;
 
-  // Genre distribution from vibe arrays
   const genreCount: Record<string, number> = {};
   books.forEach(b => {
     (b.vibe || []).forEach((tag: string) => {
@@ -273,7 +307,6 @@ function StatsView({ books }: { books: Book[] }) {
     .slice(0, 8)
     .map(([name, value]) => ({ name, value }));
 
-  // Rating distribution
   const ratingDist: Record<string, number> = { "1": 0, "2": 0, "3": 0, "4": 0, "5": 0 };
   books.forEach(b => {
     if (b.rating && b.rating > 0) {
@@ -283,13 +316,11 @@ function StatsView({ books }: { books: Book[] }) {
   });
   const ratingData = Object.entries(ratingDist).map(([star, count]) => ({ star: `${star}★`, count }));
 
-  // Average rating
   const ratedBooks = books.filter(b => (b.rating || 0) > 0);
   const avgRating = ratedBooks.length > 0
     ? (ratedBooks.reduce((acc, b) => acc + (b.rating || 0), 0) / ratedBooks.length).toFixed(1)
     : "—";
 
-  // Library filter
   const filteredBooks = books.filter(b => {
     if (genreFilter.length > 0 && !genreFilter.some(g => (b.vibe || []).includes(g))) return false;
     if (pagesFilter === "short" && (b.pages || 0) >= 200) return false;
@@ -300,9 +331,7 @@ function StatsView({ books }: { books: Book[] }) {
     return true;
   });
 
-  const toggleGenre = (g: string) => {
-    setGenreFilter(prev => prev.includes(g) ? prev.filter(x => x !== g) : [...prev, g]);
-  };
+  const hasActiveFilters = genreFilter.length > 0 || pagesFilter !== "any" || ratingFilter !== "any";
 
   const card = (children: React.ReactNode, title?: string) => (
     <div style={{ border: "1px solid var(--line)", background: "var(--paper-soft)", borderRadius: 20, padding: 14 }}>
@@ -313,7 +342,6 @@ function StatsView({ books }: { books: Book[] }) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      {/* Summary */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
         {[
           { label: "Страниц прочитано", value: totalPages.toLocaleString("ru") },
@@ -327,7 +355,6 @@ function StatsView({ books }: { books: Book[] }) {
         ))}
       </div>
 
-      {/* Genre chart */}
       {genreData.length > 0 ? card(
         <div>
           <ResponsiveContainer width="100%" height={180}>
@@ -357,128 +384,189 @@ function StatsView({ books }: { books: Book[] }) {
         "Жанры в библиотеке"
       )}
 
-      {/* Rating distribution */}
       {card(
-        <ResponsiveContainer width="100%" height={120}>
-          <BarChart data={ratingData} barSize={28}>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" vertical={false} />
-            <XAxis dataKey="star" tick={{ fontSize: 11, fill: "var(--muted)" }} axisLine={false} tickLine={false} />
-            <YAxis hide allowDecimals={false} />
-            <Tooltip cursor={false} />
-            <Bar dataKey="count" name="Книг" radius={[6, 6, 0, 0]}
-              fill="var(--accent)" />
-          </BarChart>
-        </ResponsiveContainer>,
+        <div style={{ pointerEvents: "none" }}>
+          <ResponsiveContainer width="100%" height={120}>
+            <BarChart data={ratingData} barSize={28}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" vertical={false} />
+              <XAxis dataKey="star" tick={{ fontSize: 11, fill: "var(--muted)" }} axisLine={false} tickLine={false} />
+              <YAxis hide allowDecimals={false} />
+              <Bar dataKey="count" name="Книг" radius={[6, 6, 0, 0]} fill="var(--accent)" />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>,
         "Распределение оценок"
       )}
 
-      {/* Library filter */}
-      {card(
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {/* Genre filter */}
-          <div>
-            <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 600, marginBottom: 6 }}>Жанр</div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-              {ALL_GENRES.map(g => (
-                <button key={g} onClick={() => toggleGenre(g)} style={{
-                  border: 0, borderRadius: 999, padding: "5px 10px",
-                  background: genreFilter.includes(g) ? "var(--accent)" : "color-mix(in srgb, var(--accent-2), white 40%)",
-                  color: genreFilter.includes(g) ? "white" : "var(--accent)",
-                  fontSize: 11, cursor: "pointer", fontWeight: 600,
-                }}>
-                  {g}
-                </button>
-              ))}
-            </div>
-          </div>
+      <div style={{ border: "1px solid var(--line)", background: "var(--paper-soft)", borderRadius: 20, padding: 14 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+          <h4 style={{ color: "var(--ink)", margin: 0, fontWeight: 700, fontSize: 13 }}>Фильтр библиотеки</h4>
+          <button
+            onClick={openFilter}
+            style={{
+              border: hasActiveFilters ? "1.5px solid var(--accent)" : "1px solid var(--line)",
+              borderRadius: 10, padding: "6px 12px",
+              background: hasActiveFilters ? "color-mix(in srgb, var(--accent), white 88%)" : "transparent",
+              color: hasActiveFilters ? "var(--accent)" : "var(--muted)",
+              fontSize: 12, cursor: "pointer", fontWeight: 600,
+              display: "flex", alignItems: "center", gap: 5,
+            }}
+          >
+            ⚙ Фильтр{hasActiveFilters ? ` (${genreFilter.length + (pagesFilter !== "any" ? 1 : 0) + (ratingFilter !== "any" ? 1 : 0)})` : ""}
+          </button>
+        </div>
 
-          {/* Pages filter */}
-          <div>
-            <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 600, marginBottom: 6 }}>Количество страниц</div>
-            <div style={{ display: "flex", gap: 6 }}>
-              {[
-                { key: "any", label: "Любое" },
-                { key: "short", label: "< 200" },
-                { key: "medium", label: "200–400" },
-                { key: "long", label: "400+" },
-              ].map(o => (
-                <button key={o.key} onClick={() => setPagesFilter(o.key as typeof pagesFilter)} style={{
-                  flex: 1, border: "1px solid var(--line)", borderRadius: 10, padding: "6px 4px",
-                  background: pagesFilter === o.key ? "var(--accent)" : "transparent",
-                  color: pagesFilter === o.key ? "white" : "var(--muted)",
-                  fontSize: 10, cursor: "pointer", fontWeight: 600,
-                }}>
-                  {o.label}
-                </button>
-              ))}
-            </div>
-          </div>
+        <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 600, marginBottom: 8 }}>
+          {filteredBooks.length} {pluralize(filteredBooks.length, "книга", "книги", "книг")}
+          {hasActiveFilters && <span style={{ color: "var(--accent)", marginLeft: 6 }}>· фильтр применён</span>}
+        </div>
 
-          {/* Rating filter */}
-          <div>
-            <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 600, marginBottom: 6 }}>Оценка</div>
-            <div style={{ display: "flex", gap: 6 }}>
-              {[
-                { key: "any", label: "Любая" },
-                { key: "high", label: "4★ и выше" },
-                { key: "top", label: "5★" },
-              ].map(o => (
-                <button key={o.key} onClick={() => setRatingFilter(o.key as typeof ratingFilter)} style={{
-                  flex: 1, border: "1px solid var(--line)", borderRadius: 10, padding: "6px 4px",
-                  background: ratingFilter === o.key ? "var(--accent)" : "transparent",
-                  color: ratingFilter === o.key ? "white" : "var(--muted)",
-                  fontSize: 10, cursor: "pointer", fontWeight: 600,
-                }}>
-                  {o.label}
-                </button>
-              ))}
-            </div>
+        {filteredBooks.length === 0 ? (
+          <div style={{ textAlign: "center", padding: "16px 0", color: "var(--muted)", fontSize: 13 }}>
+            Нет книг по выбранным фильтрам
           </div>
-
-          {/* Filtered results */}
-          <div>
-            <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 600, marginBottom: 8 }}>
-              Результат: {filteredBooks.length} книг
-            </div>
-            {filteredBooks.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "16px 0", color: "var(--muted)", fontSize: 13 }}>
-                Нет книг по выбранным фильтрам
-              </div>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {filteredBooks.map(book => (
-                  <div key={book.id} style={{
-                    display: "grid", gridTemplateColumns: "44px 1fr auto",
-                    gap: 10, alignItems: "center",
-                    padding: "8px 10px", borderRadius: 14,
-                    background: "rgba(255,255,255,0.55)",
-                    border: "1px solid var(--line)",
-                  }}>
-                    <img src={book.cover || ""} alt={book.title}
-                      style={{ width: "100%", aspectRatio: "2/3", objectFit: "cover", borderRadius: 7 }} />
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ fontWeight: 700, fontSize: 12, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{book.title}</div>
-                      <div style={{ fontSize: 10, color: "var(--muted)", marginTop: 1 }}>{book.author}</div>
-                      {(book.vibe || []).length > 0 && (
-                        <div style={{ fontSize: 9, color: "var(--accent)", marginTop: 3 }}>
-                          {(book.vibe || []).slice(0, 3).join(" · ")}
-                        </div>
-                      )}
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {filteredBooks.map(book => (
+              <div key={book.id} style={{
+                display: "grid", gridTemplateColumns: "44px 1fr auto",
+                gap: 10, alignItems: "center",
+                padding: "8px 10px", borderRadius: 14,
+                background: "rgba(255,255,255,0.55)",
+                border: "1px solid var(--line)",
+              }}>
+                <img src={book.cover || ""} alt={book.title}
+                  style={{ width: "100%", aspectRatio: "2/3", objectFit: "cover", borderRadius: 7 }} />
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontWeight: 700, fontSize: 12, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{book.title}</div>
+                  <div style={{ fontSize: 10, color: "var(--muted)", marginTop: 1 }}>{book.author}</div>
+                  {(book.vibe || []).length > 0 && (
+                    <div style={{ fontSize: 9, color: "var(--accent)", marginTop: 3 }}>
+                      {(book.vibe || []).slice(0, 3).join(" · ")}
                     </div>
-                    <div style={{ textAlign: "right", flexShrink: 0 }}>
-                      <div style={{ fontSize: 11, color: "var(--accent)", fontWeight: 700 }}>
-                        {(book.rating || 0) > 0 ? `${"★".repeat(Math.round(book.rating || 0))}` : ""}
-                      </div>
-                      <div style={{ fontSize: 9, color: "var(--muted)" }}>{book.pages || "?"} стр.</div>
-                      <div style={{ fontSize: 9, color: "var(--muted)", marginTop: 1 }}>{book.status}</div>
-                    </div>
+                  )}
+                </div>
+                <div style={{ textAlign: "right", flexShrink: 0 }}>
+                  <div style={{ fontSize: 11, color: "var(--accent)", fontWeight: 700 }}>
+                    {(book.rating || 0) > 0 ? `${"★".repeat(Math.round(book.rating || 0))}` : ""}
                   </div>
-                ))}
+                  <div style={{ fontSize: 9, color: "var(--muted)" }}>{book.pages || "?"} стр.</div>
+                  <div style={{ fontSize: 9, color: "var(--muted)", marginTop: 1 }}>{book.status}</div>
+                </div>
               </div>
-            )}
+            ))}
           </div>
-        </div>,
-        "Фильтр библиотеки"
+        )}
+      </div>
+
+      {filterOpen && (
+        <div
+          style={{
+            position: "fixed", inset: 0, zIndex: 200,
+            background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)",
+            display: "flex", alignItems: "flex-end", justifyContent: "center",
+          }}
+          onClick={() => setFilterOpen(false)}
+        >
+          <div
+            style={{
+              width: "100%", maxWidth: 480,
+              background: "var(--paper)", borderRadius: "28px 28px 0 0",
+              padding: "20px 18px 32px",
+              boxShadow: "0 -8px 40px rgba(44,33,27,0.18)",
+              maxHeight: "80dvh", overflowY: "auto",
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+              <h3 style={{ margin: 0, fontWeight: 800, fontSize: 16, color: "var(--ink)" }}>Фильтр библиотеки</h3>
+              <button
+                onClick={resetFilter}
+                style={{ border: 0, background: "transparent", color: "var(--muted)", fontSize: 12, cursor: "pointer", fontWeight: 600 }}
+              >
+                Сбросить
+              </button>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <div>
+                <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 700, marginBottom: 8 }}>Жанр</div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                  {ALL_GENRES.map(g => (
+                    <button key={g}
+                      onClick={() => setPendingGenre(prev => prev.includes(g) ? prev.filter(x => x !== g) : [...prev, g])}
+                      style={{
+                        border: 0, borderRadius: 999, padding: "6px 12px",
+                        background: pendingGenre.includes(g) ? "var(--accent)" : "color-mix(in srgb, var(--accent-2), white 40%)",
+                        color: pendingGenre.includes(g) ? "white" : "var(--accent)",
+                        fontSize: 12, cursor: "pointer", fontWeight: 600,
+                      }}>
+                      {g}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 700, marginBottom: 8 }}>Количество страниц</div>
+                <div style={{ display: "flex", gap: 6 }}>
+                  {[
+                    { key: "any", label: "Любое" },
+                    { key: "short", label: "< 200" },
+                    { key: "medium", label: "200–400" },
+                    { key: "long", label: "400+" },
+                  ].map(o => (
+                    <button key={o.key}
+                      onClick={() => setPendingPages(o.key as typeof pagesFilter)}
+                      style={{
+                        flex: 1, border: "1px solid var(--line)", borderRadius: 10, padding: "8px 4px",
+                        background: pendingPages === o.key ? "var(--accent)" : "transparent",
+                        color: pendingPages === o.key ? "white" : "var(--muted)",
+                        fontSize: 11, cursor: "pointer", fontWeight: 600,
+                      }}>
+                      {o.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 700, marginBottom: 8 }}>Оценка</div>
+                <div style={{ display: "flex", gap: 6 }}>
+                  {[
+                    { key: "any", label: "Любая" },
+                    { key: "high", label: "4★ и выше" },
+                    { key: "top", label: "5★" },
+                  ].map(o => (
+                    <button key={o.key}
+                      onClick={() => setPendingRating(o.key as typeof ratingFilter)}
+                      style={{
+                        flex: 1, border: "1px solid var(--line)", borderRadius: 10, padding: "8px 4px",
+                        background: pendingRating === o.key ? "var(--accent)" : "transparent",
+                        color: pendingRating === o.key ? "white" : "var(--muted)",
+                        fontSize: 11, cursor: "pointer", fontWeight: 600,
+                      }}>
+                      {o.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={applyFilter}
+              style={{
+                width: "100%", marginTop: 20,
+                border: 0, borderRadius: 16, padding: "13px",
+                background: "var(--accent)", color: "white",
+                fontWeight: 800, fontSize: 15, cursor: "pointer",
+                display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+              }}
+            >
+              ✓ Применить фильтр
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -491,7 +579,6 @@ export function TrackersTab() {
 
   return (
     <div style={{ padding: "14px 16px 28px", display: "flex", flexDirection: "column", gap: 14 }}>
-      {/* Segmented control */}
       <div style={{
         display: "grid", gridTemplateColumns: "1fr 1fr",
         background: "rgba(0,0,0,0.06)", borderRadius: 14, padding: 3,
@@ -500,16 +587,20 @@ export function TrackersTab() {
           { key: "calendar", label: "Трекер", icon: CalendarDays },
           { key: "stats", label: "Статистика", icon: BarChart2 },
         ] as const).map(({ key, label, icon: Icon }) => (
-          <button key={key} onClick={() => setView(key)} style={{
-            border: 0, borderRadius: 11, padding: "8px 0",
-            background: view === key ? "var(--paper-soft)" : "transparent",
-            color: view === key ? "var(--accent)" : "var(--muted)",
-            fontWeight: view === key ? 700 : 500,
-            fontSize: 13, cursor: "pointer",
-            display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-            boxShadow: view === key ? "0 1px 4px rgba(0,0,0,0.08)" : "none",
-            transition: "all 0.18s",
-          }}>
+          <button
+            key={key}
+            onClick={() => setView(key)}
+            style={{
+              border: 0, borderRadius: 11, padding: "10px",
+              background: view === key ? "var(--paper)" : "transparent",
+              color: view === key ? "var(--accent)" : "var(--muted)",
+              fontWeight: view === key ? 700 : 500,
+              fontSize: 13, cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+              boxShadow: view === key ? "0 2px 8px rgba(44,33,27,0.10)" : "none",
+              transition: "all 0.2s",
+            }}
+          >
             <Icon size={14} />
             {label}
           </button>

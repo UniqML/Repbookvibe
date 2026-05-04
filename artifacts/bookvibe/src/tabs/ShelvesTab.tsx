@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { Trash2, BookOpen, Search, Plus, Heart, Check, Library, BookMarked } from "lucide-react";
-import { useListBooks, useDeleteBook, getListBooksQueryKey } from "@workspace/api-client-react";
+import { useListBooks, useDeleteBook, useSaveBook, getListBooksQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { Book } from "@workspace/api-client-react";
 import { BookSearchModal } from "@/components/BookSearchModal";
+import { useBookState } from "@/hooks/useBookState";
 
 const STATUSES = [
   { label: "Все", icon: Library, color: "#8B7355", bgColor: "rgba(139, 115, 85, 0.1)" },
@@ -21,12 +22,15 @@ export function ShelvesTab({ onSelectBook }: ShelvesTabProps) {
   const [filter, setFilter] = useState("Все");
   const [search, setSearch] = useState("");
   const [searchModalOpen, setSearchModalOpen] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<Book | null>(null);
   const qc = useQueryClient();
+  const { setActiveBook } = useBookState();
 
   const { data, isLoading } = useListBooks();
   const books: Book[] = data?.items || [];
 
   const { mutateAsync: deleteBook, isPending: deleting } = useDeleteBook();
+  const { mutateAsync: saveBook } = useSaveBook();
 
   const filtered = books.filter(b => {
     const matchStatus = filter === "Все" || b.status === filter;
@@ -36,9 +40,39 @@ export function ShelvesTab({ onSelectBook }: ShelvesTabProps) {
 
   const getStatusConfig = (label: string) => STATUSES.find(s => s.label === label);
 
-  const handleDelete = async (id: number) => {
-    if (!confirm("Удалить книгу из полки?")) return;
-    await deleteBook({ bookId: id });
+  const handleDelete = (book: Book) => {
+    setPendingDelete(book);
+  };
+
+  const confirmDelete = async () => {
+    if (!pendingDelete) return;
+    await deleteBook({ bookId: pendingDelete.id });
+    qc.invalidateQueries({ queryKey: getListBooksQueryKey() });
+    setPendingDelete(null);
+  };
+
+  const handleBookClick = (book: Book) => {
+    setActiveBook(book.id);
+    onSelectBook?.();
+  };
+
+  const toggleFavorite = async (book: Book) => {
+    const isFav = book.shelf === "Любимые";
+    await saveBook({
+      data: {
+        id: book.id,
+        title: book.title,
+        author: book.author || "",
+        cover: book.cover || "",
+        pages: book.pages || 0,
+        read_pages: book.read_pages || 0,
+        isbn: book.isbn || "",
+        status: book.status || "Хочу прочитать",
+        shelf: isFav ? "Новые" : "Любимые",
+        vibe: book.vibe || [],
+        rating: book.rating || 0,
+      }
+    });
     qc.invalidateQueries({ queryKey: getListBooksQueryKey() });
   };
 
@@ -88,31 +122,19 @@ export function ShelvesTab({ onSelectBook }: ShelvesTabProps) {
               key={s.label}
               onClick={() => setFilter(s.label)}
               style={{
-                flexShrink: 0, 
+                flexShrink: 0,
                 border: isActive ? `2px solid ${s.color}` : `1px solid ${s.color}`,
-                borderRadius: 999, 
+                borderRadius: 999,
                 padding: "8px 14px",
                 background: isActive ? s.color : s.bgColor,
                 color: isActive ? "white" : s.color,
-                fontSize: 13, 
+                fontSize: 13,
                 cursor: "pointer",
                 display: "flex",
                 alignItems: "center",
                 gap: 6,
                 fontWeight: isActive ? 700 : 600,
                 transition: "all 0.2s ease",
-              }}
-              onMouseEnter={(e) => {
-                if (!isActive) {
-                  e.currentTarget.style.background = s.bgColor;
-                  e.currentTarget.style.transform = "translateY(-2px)";
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!isActive) {
-                  e.currentTarget.style.background = s.bgColor;
-                  e.currentTarget.style.transform = "translateY(0)";
-                }
               }}
             >
               <IconComponent size={14} />
@@ -133,57 +155,85 @@ export function ShelvesTab({ onSelectBook }: ShelvesTabProps) {
       )}
 
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        {filtered.map(book => (
-          <div
-            key={book.id}
-            style={{
-              width: "100%", border: "1px solid var(--line)", background: "var(--paper-soft)",
-              borderRadius: 24, padding: 12, display: "grid", gridTemplateColumns: "62px 1fr 28px",
-              gap: 13, alignItems: "center", boxShadow: "0 4px 16px rgba(44,33,27,0.07)",
-            }}
-          >
-            <img
-              src={book.cover || "https://images.unsplash.com/photo-1495446815901-a7297e633e8d?auto=format&fit=crop&w=200&q=60"}
-              alt={book.title}
-              style={{ width: "100%", aspectRatio: "2/3", objectFit: "cover", borderRadius: 12 }}
-            />
-            <div onClick={onSelectBook} style={{ cursor: "pointer", minWidth: 0 }}>
-              <h3 style={{ margin: 0, color: "var(--ink)", fontWeight: 700, fontSize: 14, lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {book.title}
-              </h3>
-              <p style={{ margin: "3px 0 6px", color: "var(--muted)", fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {book.author}
-              </p>
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                <span style={{ fontSize: 11, color: "var(--accent)", background: "color-mix(in srgb, var(--accent-2), white 30%)", padding: "3px 8px", borderRadius: 999 }}>
-                  {book.status}
-                </span>
-                {(book.rating || 0) > 0 && (
-                  <span style={{ fontSize: 11, color: "var(--muted)", background: "rgba(0,0,0,0.05)", padding: "3px 8px", borderRadius: 999 }}>
-                    {book.rating}/5 звёзд
+        {filtered.map(book => {
+          const isFav = book.shelf === "Любимые";
+          const statusConfig = getStatusConfig(book.status || "");
+          return (
+            <div
+              key={book.id}
+              style={{
+                width: "100%", border: "1px solid var(--line)", background: "var(--paper-soft)",
+                borderRadius: 24, padding: 12, display: "grid", gridTemplateColumns: "62px 1fr auto",
+                gap: 13, alignItems: "center", boxShadow: "0 4px 16px rgba(44,33,27,0.07)",
+              }}
+            >
+              <div style={{ position: "relative" }}>
+                <img
+                  src={book.cover || "https://images.unsplash.com/photo-1495446815901-a7297e633e8d?auto=format&fit=crop&w=200&q=60"}
+                  alt={book.title}
+                  onClick={() => handleBookClick(book)}
+                  style={{ width: "100%", aspectRatio: "2/3", objectFit: "cover", borderRadius: 12, display: "block", cursor: "pointer" }}
+                />
+                <button
+                  onClick={(e) => { e.stopPropagation(); toggleFavorite(book); }}
+                  style={{
+                    position: "absolute", top: 4, right: 4,
+                    width: 22, height: 22, borderRadius: "50%",
+                    border: 0, background: "rgba(255,255,255,0.92)",
+                    color: isFav ? "#ef4444" : "rgba(0,0,0,0.3)",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    cursor: "pointer", padding: 0,
+                    boxShadow: "0 1px 4px rgba(0,0,0,0.15)",
+                  }}
+                  title={isFav ? "Убрать из избранного" : "В избранное"}
+                >
+                  <Heart size={11} fill={isFav ? "#ef4444" : "none"} strokeWidth={2} />
+                </button>
+              </div>
+
+              <div onClick={() => handleBookClick(book)} style={{ cursor: "pointer", minWidth: 0 }}>
+                <h3 style={{ margin: 0, color: "var(--ink)", fontWeight: 700, fontSize: 14, lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {book.title}
+                </h3>
+                <p style={{ margin: "3px 0 6px", color: "var(--muted)", fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {book.author}
+                </p>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  <span style={{
+                    fontSize: 11, color: statusConfig?.color || "var(--accent)",
+                    background: statusConfig?.bgColor || "color-mix(in srgb, var(--accent-2), white 30%)",
+                    padding: "3px 8px", borderRadius: 999,
+                  }}>
+                    {book.status}
                   </span>
+                  {(book.rating || 0) > 0 && (
+                    <span style={{ fontSize: 11, color: "var(--muted)", background: "rgba(0,0,0,0.05)", padding: "3px 8px", borderRadius: 999 }}>
+                      {book.rating}/5 ★
+                    </span>
+                  )}
+                </div>
+                {(book.pages || 0) > 0 && (
+                  <div style={{ marginTop: 6 }}>
+                    <div style={{ height: 6, borderRadius: 999, background: "rgba(0,0,0,0.08)", overflow: "hidden" }}>
+                      <div style={{ height: "100%", borderRadius: "inherit", background: "linear-gradient(90deg, var(--accent), var(--accent-2))", width: `${Math.min(100, Math.round((book.read_pages || 0) / (book.pages || 1) * 100))}%` }} />
+                    </div>
+                    <span style={{ fontSize: 10, color: "var(--muted)", marginTop: 2, display: "block" }}>
+                      {book.read_pages || 0} / {book.pages} стр.
+                    </span>
+                  </div>
                 )}
               </div>
-              {(book.pages || 0) > 0 && (
-                <div style={{ marginTop: 6 }}>
-                  <div style={{ height: 6, borderRadius: 999, background: "rgba(0,0,0,0.08)", overflow: "hidden" }}>
-                    <div style={{ height: "100%", borderRadius: "inherit", background: "linear-gradient(90deg, var(--accent), var(--accent-2))", width: `${Math.min(100, Math.round((book.read_pages || 0) / (book.pages || 1) * 100))}%` }} />
-                  </div>
-                  <span style={{ fontSize: 10, color: "var(--muted)", marginTop: 2, display: "block" }}>
-                    {book.read_pages || 0} / {book.pages} стр.
-                  </span>
-                </div>
-              )}
+
+              <button
+                onClick={() => handleDelete(book)}
+                disabled={deleting}
+                style={{ border: 0, background: "transparent", color: "var(--muted)", cursor: "pointer", padding: 4, display: "flex" }}
+              >
+                <Trash2 size={16} />
+              </button>
             </div>
-            <button
-              onClick={() => handleDelete(book.id)}
-              disabled={deleting}
-              style={{ border: 0, background: "transparent", color: "var(--muted)", cursor: "pointer", padding: 4, display: "flex" }}
-            >
-              <Trash2 size={16} />
-            </button>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {searchModalOpen && (
@@ -191,6 +241,75 @@ export function ShelvesTab({ onSelectBook }: ShelvesTabProps) {
           open={searchModalOpen}
           onClose={() => setSearchModalOpen(false)}
         />
+      )}
+
+      {pendingDelete && (
+        <div
+          style={{
+            position: "fixed", inset: 0, zIndex: 200,
+            background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)",
+            display: "flex", alignItems: "flex-end", justifyContent: "center",
+          }}
+          onClick={() => setPendingDelete(null)}
+        >
+          <div
+            style={{
+              width: "100%", maxWidth: 480,
+              background: "var(--paper)", borderRadius: "28px 28px 0 0",
+              padding: "24px 20px 32px",
+              boxShadow: "0 -8px 40px rgba(44,33,27,0.18)",
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ textAlign: "center", marginBottom: 20 }}>
+              <div style={{
+                width: 56, height: 56, borderRadius: "50%",
+                background: "rgba(239,68,68,0.1)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                margin: "0 auto 12px",
+              }}>
+                <Trash2 size={24} style={{ color: "#ef4444" }} />
+              </div>
+              <div style={{ fontWeight: 800, fontSize: 16, color: "var(--ink)", marginBottom: 6 }}>
+                Удалить книгу?
+              </div>
+              <div style={{
+                fontSize: 13, color: "var(--muted)", lineHeight: 1.4,
+                maxWidth: 260, margin: "0 auto",
+              }}>
+                «{pendingDelete.title}» будет удалена с полки без возможности восстановления
+              </div>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              <button
+                onClick={() => setPendingDelete(null)}
+                style={{
+                  border: "1.5px solid var(--line)",
+                  borderRadius: 16, padding: "13px",
+                  background: "transparent",
+                  color: "var(--ink)", fontWeight: 700, fontSize: 14,
+                  cursor: "pointer",
+                }}
+              >
+                Отмена
+              </button>
+              <button
+                onClick={confirmDelete}
+                disabled={deleting}
+                style={{
+                  border: 0, borderRadius: 16, padding: "13px",
+                  background: "#ef4444",
+                  color: "white", fontWeight: 700, fontSize: 14,
+                  cursor: deleting ? "default" : "pointer",
+                  opacity: deleting ? 0.7 : 1,
+                }}
+              >
+                {deleting ? "Удаляем..." : "Удалить"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

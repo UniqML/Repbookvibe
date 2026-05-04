@@ -242,7 +242,7 @@ export function ProfileTab() {
                 {avatarOptions.map((seed) => (
                   <button
                     key={seed}
-                    onClick={() => handleAvatarSelectLocalOnly(seed)}
+                    onClick={() => handleAvatarSelect(seed)}
                     disabled={updating}
                     style={{
                       border: avatarSeed === seed ? "2px solid var(--accent)" : "1px solid var(--line)",
