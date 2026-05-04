@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, chatMessagesTable, moderationLogsTable, reportsTable, usersTable } from "@workspace/db";
-import { and, eq, desc, sql } from "drizzle-orm";
+import { and, eq, desc, lt, sql } from "drizzle-orm";
 import { ListChatMessagesQueryParams, SendChatMessageParams, SendChatMessageBody } from "@workspace/api-zod";
 import { moderateChatText } from "../lib/moderation";
 
@@ -67,17 +67,26 @@ router.get("/chats/:roomId/messages", async (req, res) => {
     return;
   }
   const queryParsed = ListChatMessagesQueryParams.safeParse(req.query);
-  const limit = queryParsed.success ? queryParsed.data.limit : 40;
+  const limit = Math.min(queryParsed.success ? queryParsed.data.limit : 40, 100);
+  const beforeId = queryParsed.success ? queryParsed.data.before_id : undefined;
+  const conditions = [eq(chatMessagesTable.roomId, paramsParsed.data.roomId)];
+  if (beforeId) {
+    conditions.push(lt(chatMessagesTable.id, beforeId));
+  }
 
-  const subquery = db.select()
+  const page = await db.select()
     .from(chatMessagesTable)
-    .where(eq(chatMessagesTable.roomId, paramsParsed.data.roomId))
+    .where(and(...conditions))
     .orderBy(desc(chatMessagesTable.id))
-    .limit(limit)
-    .as("sub");
+    .limit(limit + 1);
 
-  const messages = await db.select().from(subquery).orderBy(subquery.id);
-  res.json({ items: messages });
+  const hasMore = page.length > limit;
+  const messages = page.slice(0, limit).reverse();
+  res.json({
+    items: messages,
+    next_cursor: hasMore && messages.length ? messages[0]?.id : null,
+    has_more: hasMore,
+  });
 });
 
 router.post("/chats/:roomId/messages", async (req, res) => {

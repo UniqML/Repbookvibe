@@ -1,5 +1,5 @@
 import { Router, type Request, type Response } from "express";
-import { db, usersTable } from "@workspace/db";
+import { db, usersTable, booksTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
@@ -26,6 +26,22 @@ function generateVerificationCode(): string {
 
 function createAvatarSeed(email: string): string {
   return email.trim().toLowerCase();
+}
+
+function normalizeGuestKey(value: unknown): string | null {
+  return typeof value === "string" && value.trim().length >= 12
+    ? value.trim().slice(0, 120)
+    : null;
+}
+
+async function migrateGuestBooks(userId: number, guestKey: unknown) {
+  const normalizedGuestKey = normalizeGuestKey(guestKey);
+  if (!normalizedGuestKey) return;
+
+  await db
+    .update(booksTable)
+    .set({ userId, guestKey: null })
+    .where(eq(booksTable.guestKey, normalizedGuestKey));
 }
 
 function toAuthUser(user: {
@@ -79,7 +95,7 @@ interface AuthRequest extends Request {
 // Register endpoint
 router.post("/auth/register", async (req: AuthRequest, res: Response) => {
   try {
-    const { email, password, displayName } = req.body;
+    const { email, password, displayName, guest_key } = req.body;
 
     if (!email || !password) {
       res.status(400).json({ error: "Email and password required" });
@@ -127,7 +143,7 @@ router.post("/auth/register", async (req: AuthRequest, res: Response) => {
 // Verify code endpoint
 router.post("/auth/verify", async (req: AuthRequest, res: Response) => {
   try {
-    const { email, code } = req.body;
+    const { email, code, guest_key } = req.body;
 
     if (!email || !code) {
       res.status(400).json({ error: "Email and code required" });
@@ -158,6 +174,8 @@ router.post("/auth/verify", async (req: AuthRequest, res: Response) => {
       .set({ isVerified: true, verificationCode: null })
       .where(eq(usersTable.id, user.id));
 
+    await migrateGuestBooks(user.id, guest_key);
+
     const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, {
       expiresIn: "30d",
     });
@@ -175,7 +193,7 @@ router.post("/auth/verify", async (req: AuthRequest, res: Response) => {
 // Login endpoint
 router.post("/auth/login", async (req: AuthRequest, res: Response) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, guest_key } = req.body;
 
     if (!email || !password) {
       res.status(400).json({ error: "Email and password required" });
@@ -205,6 +223,8 @@ router.post("/auth/login", async (req: AuthRequest, res: Response) => {
       res.status(403).json({ error: "Ваш аккаунт заблокирован. Обратитесь к администратору." });
       return;
     }
+
+    await migrateGuestBooks(user.id, guest_key);
 
     const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, {
       expiresIn: "30d",

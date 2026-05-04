@@ -36,6 +36,27 @@ export function useAuth() {
 }
 
 const API_URL = import.meta.env.VITE_API_URL || '/api';
+const GUEST_KEY_STORAGE = 'bookvibe_guest_key';
+
+function getOrCreateGuestKey(): string {
+  try {
+    const existing = localStorage.getItem(GUEST_KEY_STORAGE);
+    if (existing) return existing;
+    const random = crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    localStorage.setItem(GUEST_KEY_STORAGE, random);
+    return random;
+  } catch {
+    return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  }
+}
+
+function clearGuestKey() {
+  try {
+    localStorage.removeItem(GUEST_KEY_STORAGE);
+  } catch {
+    // ignore
+  }
+}
 
 export function useAuthState() {
   const [user, setUser] = useState<User | null>(() => {
@@ -65,6 +86,7 @@ export function useAuthState() {
 
   const loginGuest = useCallback(async () => {
     try {
+      getOrCreateGuestKey();
       const res = await fetch(`${API_URL}/auth/guest`, { method: 'POST' });
       const data = await res.json();
       saveAuth(data.user, data.token);
@@ -77,7 +99,7 @@ export function useAuthState() {
     const res = await fetch(`${API_URL}/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, displayName }),
+      body: JSON.stringify({ email, password, displayName, guest_key: getOrCreateGuestKey() }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error);
@@ -88,22 +110,24 @@ export function useAuthState() {
     const res = await fetch(`${API_URL}/auth/verify`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, code }),
+      body: JSON.stringify({ email, code, guest_key: getOrCreateGuestKey() }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error);
     saveAuth(data.user, data.token);
+    clearGuestKey();
   }, [saveAuth]);
 
   const loginEmail = useCallback(async (email: string, password: string) => {
     const res = await fetch(`${API_URL}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, password, guest_key: getOrCreateGuestKey() }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error);
     saveAuth(data.user, data.token);
+    clearGuestKey();
   }, [saveAuth]);
 
   const updateProfile = useCallback(async (displayName?: string, avatarUrl?: string, avatarSeed?: string) => {

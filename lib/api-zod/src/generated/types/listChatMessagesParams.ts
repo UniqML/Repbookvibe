@@ -8,4 +8,8 @@
 
 export type ListChatMessagesParams = {
   limit?: number;
+  /**
+   * Return messages older than this message id
+   */
+  before_id?: number;
 };
