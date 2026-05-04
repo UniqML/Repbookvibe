@@ -830,7 +830,7 @@ export const sendChatMessage = async (
 };
 
 export const getSendChatMessageMutationOptions = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<void>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -871,13 +871,13 @@ export type SendChatMessageMutationResult = NonNullable<
   Awaited<ReturnType<typeof sendChatMessage>>
 >;
 export type SendChatMessageMutationBody = BodyType<SendMessageBody>;
-export type SendChatMessageMutationError = ErrorType<unknown>;
+export type SendChatMessageMutationError = ErrorType<void>;
 
 /**
  * @summary Send a message to a chat room
  */
 export const useSendChatMessage = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<void>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -909,12 +909,15 @@ export const reportChatMessage = async (
   reportMessageBody?: ReportMessageBody,
   options?: RequestInit,
 ): Promise<ReportItemResult> => {
-  return customFetch<ReportItemResult>(getReportChatMessageUrl(roomId, messageId), {
-    ...options,
-    method: "POST",
-    headers: { "Content-Type": "application/json", ...options?.headers },
-    body: JSON.stringify(reportMessageBody || {}),
-  });
+  return customFetch<ReportItemResult>(
+    getReportChatMessageUrl(roomId, messageId),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(reportMessageBody),
+    },
+  );
 };
 
 export const getReportChatMessageMutationOptions = <
@@ -924,14 +927,14 @@ export const getReportChatMessageMutationOptions = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof reportChatMessage>>,
     TError,
-    { roomId: string; messageId: number; data?: BodyType<ReportMessageBody> },
+    { roomId: string; messageId: number; data: BodyType<ReportMessageBody> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationOptions<
   Awaited<ReturnType<typeof reportChatMessage>>,
   TError,
-  { roomId: string; messageId: number; data?: BodyType<ReportMessageBody> },
+  { roomId: string; messageId: number; data: BodyType<ReportMessageBody> },
   TContext
 > => {
   const mutationKey = ["reportChatMessage"];
@@ -945,7 +948,7 @@ export const getReportChatMessageMutationOptions = <
 
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof reportChatMessage>>,
-    { roomId: string; messageId: number; data?: BodyType<ReportMessageBody> }
+    { roomId: string; messageId: number; data: BodyType<ReportMessageBody> }
   > = (props) => {
     const { roomId, messageId, data } = props ?? {};
 
@@ -971,14 +974,14 @@ export const useReportChatMessage = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof reportChatMessage>>,
     TError,
-    { roomId: string; messageId: number; data?: BodyType<ReportMessageBody> },
+    { roomId: string; messageId: number; data: BodyType<ReportMessageBody> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationResult<
   Awaited<ReturnType<typeof reportChatMessage>>,
   TError,
-  { roomId: string; messageId: number; data?: BodyType<ReportMessageBody> },
+  { roomId: string; messageId: number; data: BodyType<ReportMessageBody> },
   TContext
 > => {
   return useMutation(getReportChatMessageMutationOptions(options));

@@ -8,6 +8,7 @@
 
 export interface SaveBookBody {
   id?: number;
+  guest_key?: string;
   external_id?: string;
   source?: string;
   title: string;

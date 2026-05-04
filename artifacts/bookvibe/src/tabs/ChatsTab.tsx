@@ -6,6 +6,8 @@ import {
   useSendChatMessage,
   getListChatMessagesQueryKey,
   useReportChatMessage,
+  listChatMessages,
+  type ChatMessage,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { User } from "@/hooks/useAuth";
@@ -80,32 +82,44 @@ export function ChatsTab({ user }: ChatsTabProps) {
   const qc = useQueryClient();
   const bottomRef = useRef<HTMLDivElement>(null);
   const [reportedMsgId, setReportedMsgId] = useState<number | null>(null);
+  const [olderMessages, setOlderMessages] = useState<ChatMessage[]>([]);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const [olderHasMore, setOlderHasMore] = useState(true);
 
   const { data: roomsData, isLoading: roomsLoading } = useListChatRooms();
   const rooms = roomsData?.items || [];
 
   const { data: messagesData, isLoading: msgsLoading } = useListChatMessages(
     activeRoom ?? "",
-    undefined,
-    { query: { enabled: !!activeRoom, refetchInterval: 5000, queryKey: getListChatMessagesQueryKey(activeRoom ?? "") } }
+    { limit: 40 },
+    { query: { enabled: !!activeRoom, refetchInterval: 5000, queryKey: getListChatMessagesQueryKey(activeRoom ?? "", { limit: 40 }) } }
   );
-  const messages = messagesData?.items || [];
+  const latestMessages = messagesData?.items || [];
+  const messageMap = new Map<number, ChatMessage>();
+  [...olderMessages, ...latestMessages].forEach((message) => messageMap.set(message.id, message));
+  const messages = Array.from(messageMap.values()).sort((a, b) => a.id - b.id);
+  const canLoadOlder = olderHasMore && (messagesData?.has_more || olderMessages.length > 0 || latestMessages.length >= 40);
 
   const { mutateAsync: sendMsg, isPending: sending } = useSendChatMessage();
   const { mutateAsync: reportMsg } = useReportChatMessage();
 
   useEffect(() => {
+    setOlderMessages([]);
+    setOlderHasMore(true);
+  }, [activeRoom]);
+
+  useEffect(() => {
     if (bottomRef.current) {
       bottomRef.current.scrollIntoView({ behavior: "smooth" });
     }
-  }, [messages.length]);
+  }, [latestMessages.length]);
 
   const handleSend = async () => {
     if (!msgText.trim() || !activeRoom || !user || user.isAnonymous) return;
     try {
       await sendMsg({ roomId: activeRoom, data: { author: user.displayName, author_avatar_seed: user.avatarSeed || user.email || user.displayName, text: msgText.trim() } });
       setMsgText("");
-      qc.invalidateQueries({ queryKey: getListChatMessagesQueryKey(activeRoom) });
+      qc.invalidateQueries({ queryKey: getListChatMessagesQueryKey(activeRoom, { limit: 40 }) });
     } catch { /* ignore */ }
   };
 
@@ -116,6 +130,23 @@ export function ChatsTab({ user }: ChatsTabProps) {
       setReportedMsgId(messageId);
       setTimeout(() => setReportedMsgId(null), 2000);
     } catch { /* ignore */ }
+  };
+
+  const handleLoadOlder = async () => {
+    if (!activeRoom || loadingOlder || !messages.length) return;
+    setLoadingOlder(true);
+    try {
+      const oldestId = messages[0]?.id;
+      const result = await listChatMessages(activeRoom, { limit: 40, before_id: oldestId });
+      setOlderMessages((current) => {
+        const existing = new Map<number, ChatMessage>();
+        [...result.items, ...current].forEach((message) => existing.set(message.id, message));
+        return Array.from(existing.values()).sort((a, b) => a.id - b.id);
+      });
+      setOlderHasMore(Boolean(result.has_more));
+    } catch { /* ignore */ } finally {
+      setLoadingOlder(false);
+    }
   };
 
   if (!user) {
@@ -156,6 +187,19 @@ export function ChatsTab({ user }: ChatsTabProps) {
         </div>
         <div style={{ flex: 1, overflowY: "auto", padding: "14px 18px", display: "flex", flexDirection: "column", gap: 10 }}>
           {msgsLoading && <p style={{ color: "var(--muted)", fontSize: 13, textAlign: "center" }}>{t("loading")}</p>}
+          {canLoadOlder && messages.length > 0 && (
+            <button
+              onClick={handleLoadOlder}
+              disabled={loadingOlder}
+              style={{
+                alignSelf: "center", border: "1px solid var(--line)", borderRadius: 999,
+                background: "rgba(255,255,255,0.7)", color: "var(--accent)", cursor: "pointer",
+                padding: "6px 12px", fontSize: 12, opacity: loadingOlder ? 0.6 : 1,
+              }}
+            >
+              {loadingOlder ? "Загружаю..." : "Загрузить предыдущие"}
+            </button>
+          )}
           {messages.map(msg => {
             const isMe = msg.author === user.displayName;
             return (

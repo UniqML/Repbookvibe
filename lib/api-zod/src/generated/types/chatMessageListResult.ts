@@ -9,4 +9,7 @@ import type { ChatMessage } from "./chatMessage";
 
 export interface ChatMessageListResult {
   items: ChatMessage[];
+  /** Pass as before_id to load the next older page */
+  next_cursor?: number | null;
+  has_more?: boolean;
 }

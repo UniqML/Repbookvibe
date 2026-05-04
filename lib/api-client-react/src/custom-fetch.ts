@@ -18,6 +18,15 @@ const DEFAULT_JSON_ACCEPT = "application/json, application/problem+json";
 let _baseUrl: string | null = null;
 let _authTokenGetter: AuthTokenGetter | null = null;
 
+function getBrowserGuestKey(): string | null {
+  try {
+    if (typeof localStorage === "undefined") return null;
+    return localStorage.getItem("bookvibe_guest_key");
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Set a base URL that is prepended to every relative request URL
  * (i.e. paths that start with `/`).
@@ -356,6 +365,11 @@ export async function customFetch<T = unknown>(
     if (token) {
       headers.set("authorization", `Bearer ${token}`);
     }
+  }
+
+  const guestKey = getBrowserGuestKey();
+  if (guestKey && !headers.has("x-guest-key")) {
+    headers.set("x-guest-key", guestKey);
   }
 
   const requestInfo = { method, url: resolveUrl(input) };

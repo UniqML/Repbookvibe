@@ -170,6 +170,12 @@ paths:
           schema:
             type: integer
             default: 40
+        - name: before_id
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Return messages older than this message id
       responses:
         "200":
           description: List of chat messages
@@ -317,6 +323,9 @@ components:
       properties:
         id:
           type: integer
+        guest_key:
+          type: string
+          nullable: true
         external_id:
           type: string
         source:
@@ -417,6 +426,8 @@ components:
       properties:
         id:
           type: integer
+        guest_key:
+          type: string
         external_id:
           type: string
         source:
@@ -604,6 +615,12 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ChatMessage"
+        next_cursor:
+          type: integer
+          nullable: true
+          description: Pass as before_id to load the next older page
+        has_more:
+          type: boolean
       required:
         - items
 

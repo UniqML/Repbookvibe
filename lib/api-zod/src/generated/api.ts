@@ -48,6 +48,7 @@ export const ListBooksResponse = zod.object({
   items: zod.array(
     zod.object({
       id: zod.number(),
+      guest_key: zod.string().nullish(),
       external_id: zod.string().optional(),
       source: zod.string().optional(),
       title: zod.string(),
@@ -71,6 +72,7 @@ export const ListBooksResponse = zod.object({
  */
 export const SaveBookBody = zod.object({
   id: zod.number().optional(),
+  guest_key: zod.string().optional(),
   external_id: zod.string().optional(),
   source: zod.string().optional(),
   title: zod.string(),
@@ -89,6 +91,7 @@ export const SaveBookBody = zod.object({
 export const SaveBookResponse = zod.object({
   item: zod.object({
     id: zod.number(),
+    guest_key: zod.string().nullish(),
     external_id: zod.string().optional(),
     source: zod.string().optional(),
     title: zod.string(),
@@ -181,6 +184,7 @@ export const ListChatRoomsResponse = zod.object({
           id: zod.number(),
           room_id: zod.string(),
           author: zod.string(),
+          author_avatar_seed: zod.string().nullish(),
           text: zod.string(),
           reply_to: zod.number().nullish(),
           sticker: zod.string().optional(),
@@ -203,6 +207,10 @@ export const listChatMessagesQueryLimitDefault = 40;
 
 export const ListChatMessagesQueryParams = zod.object({
   limit: zod.coerce.number().default(listChatMessagesQueryLimitDefault),
+  before_id: zod.coerce
+    .number()
+    .optional()
+    .describe("Return messages older than this message id"),
 });
 
 export const ListChatMessagesResponse = zod.object({
@@ -219,6 +227,11 @@ export const ListChatMessagesResponse = zod.object({
       created_at: zod.string().optional(),
     }),
   ),
+  next_cursor: zod
+    .number()
+    .nullish()
+    .describe("Pass as before_id to load the next older page"),
+  has_more: zod.boolean().optional(),
 });
 
 /**

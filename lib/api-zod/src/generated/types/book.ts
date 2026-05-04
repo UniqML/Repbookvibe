@@ -8,6 +8,7 @@
 
 export interface Book {
   id: number;
+  guest_key?: string | null;
   external_id?: string;
   source?: string;
   title: string;

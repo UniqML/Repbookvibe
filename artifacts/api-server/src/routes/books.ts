@@ -1,11 +1,21 @@
 import { Router } from "express";
 import { db, booksTable } from "@workspace/db";
-import { eq, desc, sql } from "drizzle-orm";
+import { and, eq, desc, sql } from "drizzle-orm";
 import { SearchBooksQueryParams, SaveBookBody, DeleteBookParams } from "@workspace/api-zod";
 
 const router = Router();
 
 const CHAT_ROOMS = ["detective", "fantasy", "romance", "heartbreak", "academia", "recommendations"];
+
+function normalizeGuestKey(value: unknown): string | null {
+  return typeof value === "string" && value.trim().length >= 12
+    ? value.trim().slice(0, 120)
+    : null;
+}
+
+function getGuestKey(req: { headers: Record<string, unknown> }, bodyValue?: unknown): string | null {
+  return normalizeGuestKey(bodyValue) || normalizeGuestKey(req.headers["x-guest-key"]);
+}
 
 async function searchGoogleBooks(q: string, limit: number) {
   try {
@@ -100,10 +110,13 @@ router.get("/books/search", async (req, res) => {
 
 router.get("/books", async (req: any, res) => {
   const userId = req.userId || 0;
-  const query = userId > 0 
-    ? db.select().from(booksTable).where(eq(booksTable.userId, userId))
-    : db.select().from(booksTable).where(eq(booksTable.userId, 0));
-  const books = await query.orderBy(desc(booksTable.createdAt));
+  const guestKey = getGuestKey(req);
+  const ownership = userId > 0
+    ? eq(booksTable.userId, userId)
+    : guestKey
+      ? eq(booksTable.guestKey, guestKey)
+      : eq(booksTable.userId, 0);
+  const books = await db.select().from(booksTable).where(ownership).orderBy(desc(booksTable.createdAt));
   res.json({ items: books });
 });
 
@@ -115,6 +128,12 @@ router.post("/books", async (req: any, res) => {
     return;
   }
   const data = parsed.data;
+  const guestKey = getGuestKey(req, data.guest_key);
+  const ownerCondition = userId > 0
+    ? eq(booksTable.userId, userId)
+    : guestKey
+      ? eq(booksTable.guestKey, guestKey)
+      : eq(booksTable.userId, 0);
   
   // Check if book with this ID already exists
   const bookId = (req.body as any).id;
@@ -142,7 +161,7 @@ router.post("/books", async (req: any, res) => {
           vibe: (data.vibe || []) as string[],
           rating: data.rating || 0,
         })
-        .where(eq(booksTable.id, bookId))
+        .where(and(eq(booksTable.id, bookId), ownerCondition))
         .returning();
       res.json({ item: updated });
       return;
@@ -151,7 +170,8 @@ router.post("/books", async (req: any, res) => {
   
   // INSERT new book
   const [book] = await db.insert(booksTable).values({
-    userId,
+    userId: userId > 0 ? userId : null,
+    guestKey: userId > 0 ? null : guestKey,
     externalId: data.external_id || "",
     source: data.source || "manual",
     title: data.title,

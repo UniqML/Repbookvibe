@@ -11,6 +11,7 @@ export interface HealthStatus {
 
 export interface Book {
   id: number;
+  guest_key?: string | null;
   external_id?: string;
   source?: string;
   title: string;
@@ -54,6 +55,7 @@ export interface BookItemResult {
 
 export interface SaveBookBody {
   id?: number;
+  guest_key?: string;
   external_id?: string;
   source?: string;
   title: string;
@@ -139,6 +141,9 @@ export interface ChatRoomListResult {
 
 export interface ChatMessageListResult {
   items: ChatMessage[];
+  /** Pass as before_id to load the next older page */
+  next_cursor?: number | null;
+  has_more?: boolean;
 }
 
 export interface ChatMessageItemResult {
@@ -218,6 +223,10 @@ export type SearchBooksParams = {
 
 export type ListChatMessagesParams = {
   limit?: number;
+  /**
+   * Return messages older than this message id
+   */
+  before_id?: number;
 };
 
 export type SearchMusicParams = {
