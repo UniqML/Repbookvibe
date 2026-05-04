@@ -8,7 +8,6 @@ import {
   useSearchMusic,
   useSearchImages,
   useSaveDiaryEntry,
-  useAskAiDiaryHelper,
   getListBooksQueryKey,
   getListDiaryEntriesQueryKey,
   getSearchBooksQueryKey,
@@ -126,7 +125,6 @@ export function BookTab() {
   const [bookFormat, setBookFormat] = useState<"paper" | "digital" | "audio">("paper");
   const [binding, setBinding] = useState<"hard" | "soft">("soft");
   const [showDiary, setShowDiary] = useState(false);
-  const [aiResult, setAiResult] = useState("");
   const [savingDiary, setSavingDiary] = useState(false);
   const [savedDiary, setSavedDiary] = useState(false);
 
@@ -200,7 +198,6 @@ export function BookTab() {
   const { mutateAsync: saveBook } = useSaveBook();
   useDeleteBook();
   const { mutateAsync: saveDiary } = useSaveDiaryEntry();
-  const { mutateAsync: askAi, isPending: aiLoading } = useAskAiDiaryHelper();
 
   const handleAddBook = async (item: BookSearchItem, status: string) => {
     const result = await saveBook({ data: { title: item.title, author: item.author || "", cover: item.cover || "", pages: item.pages || 0, isbn: item.isbn || "", external_id: item.external_id, source: item.source, description: item.description || "", status, shelf: "Новые", vibe: [] } });
@@ -269,12 +266,6 @@ export function BookTab() {
     } finally {
       setSavingDiary(false);
     }
-  };
-
-  const handleAsk = async () => {
-    if (!activeBook) return;
-    const res = await askAi({ data: { book_title: activeBook.title, mood: note, note: quote } });
-    setAiResult(res.result);
   };
 
   const toggleSticker = (s: string) => {
@@ -707,23 +698,6 @@ export function BookTab() {
           )}
         </div>,
         "Картинки к книге"
-      )}
-
-      {/* AI helper */}
-      {activeBook && panel(
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <button onClick={handleAsk} disabled={aiLoading}
-            style={{ border: 0, borderRadius: 999, padding: "12px", background: "var(--accent)", color: "white", fontWeight: 700, cursor: aiLoading ? "default" : "pointer", opacity: aiLoading ? 0.7 : 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-            <Sparkles size={16} />
-            {aiLoading ? "Думаю..." : "Спросить ИИ-помощника"}
-          </button>
-          {aiResult && (
-            <div style={{ background: "color-mix(in srgb, var(--accent-2), white 35%)", borderRadius: 16, padding: 14, fontSize: 13, color: "var(--ink)", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
-              {aiResult}
-            </div>
-          )}
-        </div>,
-        "ИИ-помощник дневника"
       )}
 
       {/* Save diary */}
