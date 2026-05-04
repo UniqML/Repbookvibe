@@ -45,6 +45,12 @@ export function ProfileTab() {
   const avatarOptions = generateAvatarSeeds(user?.email || displayName);
   const isGuest = user?.isAnonymous;
 
+  const setAvatarSeedLocal = (seed: string) => {
+    try {
+      localStorage.setItem("bookvibe_avatar_seed", seed);
+    } catch {}
+  };
+
   const handleNameSave = async () => {
     if (newName.trim() && newName !== displayName) {
       setUpdating(true);
@@ -62,13 +68,23 @@ export function ProfileTab() {
   const handleAvatarSelect = async (seed: string) => {
     setUpdating(true);
     try {
-      localStorage.setItem("bookvibe_avatar_seed", seed);
+      setAvatarSeedLocal(seed);
       await updateProfile(undefined, undefined, seed);
       setShowAvatarPicker(false);
     } catch (error) {
       console.error("Failed to update avatar:", error);
+    } finally {
+      setUpdating(false);
     }
-    setUpdating(false);
+  };
+
+  const handleToggleAvatarPicker = () => {
+    setShowAvatarPicker((value) => !value);
+  };
+
+  const handleAvatarSelectLocalOnly = (seed: string) => {
+    setAvatarSeedLocal(seed);
+    setShowAvatarPicker(false);
   };
 
   const handleSetGoal = () => {
@@ -111,7 +127,7 @@ export function ProfileTab() {
               }}
               onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.05)")}
               onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
-              onClick={() => setShowAvatarPicker(!showAvatarPicker)}
+              onClick={handleToggleAvatarPicker}
               title="Нажмите для изменения аватарки">
                 <UserAvatar seed={avatarSeed} name={displayName} email={user?.email} id={user?.id} size={80} radius={22} />
               </button>
@@ -220,7 +236,7 @@ export function ProfileTab() {
                 {avatarOptions.map((seed) => (
                   <button
                     key={seed}
-                    onClick={() => handleAvatarSelect(seed)}
+                    onClick={() => handleAvatarSelectLocalOnly(seed)}
                     disabled={updating}
                     style={{
                       border: avatarSeed === seed ? "2px solid var(--accent)" : "1px solid var(--line)",
