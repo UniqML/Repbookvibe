@@ -74,6 +74,11 @@ export async function runMigrations() {
 
     // Create ratings table if it doesn't exist
     await db.execute(sql`
+      ALTER TABLE users
+      ADD COLUMN IF NOT EXISTS is_banned BOOLEAN NOT NULL DEFAULT false;
+    `);
+
+    await db.execute(sql`
       CREATE TABLE IF NOT EXISTS ratings (
         id SERIAL PRIMARY KEY,
         user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,

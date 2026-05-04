@@ -107,6 +107,19 @@ router.post("/chats/:roomId/messages", async (req, res) => {
     res.status(422).json({ error: "Message must contain text, sticker, or image" });
     return;
   }
+
+  // Block banned users
+  if (userId && userId > 0) {
+    const [userRecord] = await db
+      .select({ isBanned: usersTable.isBanned })
+      .from(usersTable)
+      .where(eq(usersTable.id, userId))
+      .limit(1);
+    if (userRecord?.isBanned) {
+      res.status(403).json({ error: "Ваш аккаунт заблокирован. Вы не можете отправлять сообщения." });
+      return;
+    }
+  }
   const moderation = moderateChatText(body.text?.trim() || "");
   if (moderation.flagged) {
     await db.insert(moderationLogsTable).values({

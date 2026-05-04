@@ -8,9 +8,11 @@ import musicRouter from "./music";
 import imagesRouter from "./images";
 import aiRouter from "./ai";
 import ratingsRouter from "./ratings";
+import adminRouter from "./admin";
 
 const router: IRouter = Router();
 
+router.use(adminRouter);
 router.use(authRouter);
 router.use(verifyToken);
 router.use(healthRouter);

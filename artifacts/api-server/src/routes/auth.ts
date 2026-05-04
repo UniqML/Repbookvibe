@@ -201,6 +201,11 @@ router.post("/auth/login", async (req: AuthRequest, res: Response) => {
       return;
     }
 
+    if (user.isBanned) {
+      res.status(403).json({ error: "Ваш аккаунт заблокирован. Обратитесь к администратору." });
+      return;
+    }
+
     const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, {
       expiresIn: "30d",
     });

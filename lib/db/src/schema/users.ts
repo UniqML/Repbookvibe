@@ -9,6 +9,7 @@ export const usersTable = pgTable("users", {
   passwordHash: text("password_hash").notNull(),
   verificationCode: text("verification_code"),
   isVerified: boolean("is_verified").notNull().default(false),
+  isBanned: boolean("is_banned").notNull().default(false),
   avatarUrl: text("avatar_url"),
   avatarSeed: text("avatar_seed"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
