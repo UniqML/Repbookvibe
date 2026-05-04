@@ -177,6 +177,13 @@ export function BookTab() {
     }
   }, [activeBook?.id]);
 
+  useEffect(() => {
+    if (activeBookId && !books.some(b => b.id === activeBookId)) {
+      const found = books.find(b => b.status === "Читаю") || books[0] || null;
+      if (found) setActiveBook(found.id);
+    }
+  }, [activeBookId, books, setActiveBook]);
+
   const { data: searchData, isLoading: searching } = useSearchBooks(
     { q: searchQ || " ", limit: 10 },
     { query: { enabled: searchEnabled && searchQ.trim().length > 0, queryKey: getSearchBooksQueryKey({ q: searchQ, limit: 10 }) } }
@@ -196,7 +203,7 @@ export function BookTab() {
   const imageResults = imageData?.items || [];
 
   const { mutateAsync: saveBook } = useSaveBook();
-  const deleteBook = useDeleteBook();
+  useDeleteBook();
   const { mutateAsync: saveDiary } = useSaveDiaryEntry();
 
   const toggleFavorite = async (book: Book) => {
@@ -313,8 +320,8 @@ export function BookTab() {
 
   const now = new Date();
   const dateLabel = `${now.toLocaleDateString("ru-RU")} ${now.getHours().toString().padStart(2,"0")}:${now.getMinutes().toString().padStart(2,"0")}`;
-
-  const listBooks = (shelfName: string) => books.filter(b => b.shelf === shelfName);
+  const shelfBooks = (shelfName: string) => books.filter(b => b.shelf === shelfName);
+  const activeShelfBooks = books.filter(b => b.status === "Хочу прочитать" || b.shelf === "Любимые");
 
   return (
     <div style={{ padding: "14px 18px 28px", display: "flex", flexDirection: "column", gap: 14 }}>
@@ -356,18 +363,61 @@ export function BookTab() {
         </div>
       )}
 
-      {(listBooks("Хочу прочитать").length > 0 || listBooks("Любимые").length > 0) && (
+      <div style={{ border: "1px solid var(--line)", background: "var(--paper-soft)", borderRadius: 24, padding: 14, boxShadow: "0 4px 16px rgba(44,33,27,0.06)" }}>
+        <div style={{ display: "flex", gap: 8 }}>
+          <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 10, border: "1px solid var(--line)", background: "rgba(255,255,255,0.62)", borderRadius: 18, padding: "10px 14px", color: "var(--muted)" }}>
+            <Search size={16} />
+            <input
+              value={searchQ}
+              onChange={e => { setSearchQ(e.target.value); setSearchEnabled(true); }}
+              placeholder="Название книги или автор..."
+              style={{ flex: 1, border: 0, outline: 0, background: "transparent", color: "var(--ink)", fontSize: 14, fontFamily: "inherit" }}
+            />
+          </div>
+          <button
+            onClick={() => setSearchEnabled(true)}
+            style={{ border: 0, borderRadius: 18, padding: "10px 14px", background: "var(--accent)", color: "white", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontWeight: 700, fontSize: 13 }}
+          >
+            <Search size={16} />
+            Искать
+          </button>
+        </div>
+
+        {searchEnabled && searchQ.trim().length > 0 && (
+          <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 10 }}>
+            {searching && <p style={{ color: "var(--muted)", fontSize: 13 }}>Поиск...</p>}
+            {!searching && searchResults.length === 0 && <p style={{ color: "var(--muted)", fontSize: 13 }}>Ничего не найдено</p>}
+            {searchResults.map(item => (
+              <button
+                key={`${item.source}-${item.external_id || item.title}`}
+                onClick={() => handleAddBook(item, "Читаю", "Новые")}
+                style={{
+                  border: "1px solid var(--line)", background: "white", borderRadius: 18, padding: 12,
+                  display: "grid", gridTemplateColumns: "54px 1fr", gap: 10, textAlign: "left", cursor: "pointer",
+                }}
+              >
+                <img src={item.cover || "https://images.unsplash.com/photo-1495446815901-a7297e633e8d?auto=format&fit=crop&w=200&q=60"} alt={item.title} style={{ width: 54, height: 80, objectFit: "cover", borderRadius: 12 }} />
+                <div>
+                  <div style={{ fontWeight: 700, color: "var(--ink)" }}>{item.title}</div>
+                  <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>{item.author || ""}</div>
+                  <div style={{ fontSize: 11, color: "var(--accent)", marginTop: 6 }}>Открыть в чтении</div>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {(shelfBooks("Хочу прочитать").length > 0 || shelfBooks("Любимые").length > 0) && (
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           {["Хочу прочитать", "Любимые"].map((shelfName) => {
-            const shelfBooks = listBooks(shelfName);
-            if (!shelfBooks.length) return null;
+            const shelfList = shelfBooks(shelfName);
+            if (!shelfList.length) return null;
             return (
               <div key={shelfName} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <h4 style={{ margin: 0, fontSize: 14, color: "var(--ink)" }}>{shelfName}</h4>
-                </div>
+                <h4 style={{ margin: 0, fontSize: 14, color: "var(--ink)" }}>{shelfName}</h4>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10 }}>
-                  {shelfBooks.map(book => {
+                  {shelfList.map(book => {
                     const favorite = book.shelf === "Любимые";
                     return (
                       <div key={book.id} style={{ position: "relative" }}>
