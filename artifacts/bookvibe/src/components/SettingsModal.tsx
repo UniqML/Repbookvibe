@@ -1,6 +1,8 @@
-import { X, Check, Globe, Palette, LogOut, LogIn, Sparkles } from "lucide-react";
+import { useState } from "react";
+import { X, Check, Globe, Palette, LogOut, LogIn, Sparkles, RotateCcw, AlertTriangle } from "lucide-react";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useAuth } from "@/hooks/useAuth";
+import { useQueryClient } from "@tanstack/react-query";
 import type { Lang } from "@/i18n/translations";
 import { UserAvatar } from "@/components/UserAvatar";
 import { generateAvatarSeeds, getDefaultAvatarSeed } from "@/lib/avatar";
@@ -30,8 +32,39 @@ const LANG_OPTIONS: { id: Lang; flag: string; label: (t: ReturnType<typeof useLa
 export function SettingsModal({ open, onClose, theme, onThemeChange }: SettingsModalProps) {
   const { t, lang, setLang } = useLanguage();
   const { user, logout, updateProfile } = useAuth();
+  const queryClient = useQueryClient();
+  const [resetConfirm, setResetConfirm] = useState(false);
+  const [resetting, setResetting] = useState(false);
+  const [resetDone, setResetDone] = useState(false);
 
   if (!open) return null;
+
+  const handleResetStats = async () => {
+    setResetting(true);
+    try {
+      const token = localStorage.getItem("bookvibe_token");
+      const res = await fetch("/api/stats/reset", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+      if (!res.ok) throw new Error("Server error");
+      // Clear reading sessions from localStorage
+      localStorage.removeItem("bookvibe_reading_sessions");
+      // Invalidate books cache so UI updates immediately
+      await queryClient.invalidateQueries({ queryKey: ["/api/books"] });
+      setResetConfirm(false);
+      setResetDone(true);
+      setTimeout(() => setResetDone(false), 3500);
+    } catch {
+      // silent — nothing to do, just close confirm
+      setResetConfirm(false);
+    } finally {
+      setResetting(false);
+    }
+  };
 
   const displayName = user?.displayName || t("guestAccount");
   const avatarSeed = user?.avatarSeed || localStorage.getItem("bookvibe_avatar_seed") || getDefaultAvatarSeed(user);
@@ -161,6 +194,19 @@ export function SettingsModal({ open, onClose, theme, onThemeChange }: SettingsM
 
           {section(t("account"), <span style={{ fontSize: 14 }}>👤</span>,
             <div style={{ padding: "4px 0" }}>
+              {user && !user.isAnonymous && (
+                <button
+                  onClick={() => setResetConfirm(true)}
+                  style={{
+                    width: "100%", border: "none", borderBottom: "1px solid var(--line)",
+                    background: "transparent", padding: "13px 16px",
+                    display: "flex", alignItems: "center", gap: 12, cursor: "pointer", color: "#e05252",
+                  }}
+                >
+                  <RotateCcw size={16} style={{ color: "#e05252" }} />
+                  <span style={{ fontSize: 14, fontWeight: 600 }}>Сбросить статистику</span>
+                </button>
+              )}
               {user ? (
                 <button
                   onClick={() => { logout(); onClose(); }}
@@ -180,8 +226,81 @@ export function SettingsModal({ open, onClose, theme, onThemeChange }: SettingsM
               )}
             </div>
           )}
+
+          {/* Success banner */}
+          {resetDone && (
+            <div style={{
+              background: "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.35)",
+              borderRadius: 16, padding: "12px 16px",
+              display: "flex", alignItems: "center", gap: 10,
+            }}>
+              <Check size={16} style={{ color: "#16a34a", flexShrink: 0 }} />
+              <span style={{ fontSize: 14, color: "#15803d", fontWeight: 600 }}>
+                Статистика успешно сброшена
+              </span>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Confirm dialog */}
+      {resetConfirm && (
+        <>
+          <div
+            onClick={() => !resetting && setResetConfirm(false)}
+            style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 60, backdropFilter: "blur(4px)" }}
+          />
+          <div style={{
+            position: "absolute", left: "50%", top: "50%",
+            transform: "translate(-50%, -50%)",
+            zIndex: 70, width: "calc(100% - 40px)", maxWidth: 320,
+            background: "var(--paper)", borderRadius: 24,
+            padding: "24px 20px", boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
+          }}>
+            <div style={{ textAlign: "center", marginBottom: 16 }}>
+              <div style={{
+                width: 52, height: 52, borderRadius: "50%",
+                background: "rgba(224,82,82,0.12)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                margin: "0 auto 14px",
+              }}>
+                <AlertTriangle size={24} style={{ color: "#e05252" }} />
+              </div>
+              <h3 style={{ margin: "0 0 8px", fontSize: 17, fontWeight: 800, color: "var(--ink)" }}>
+                Сбросить статистику?
+              </h3>
+              <p style={{ margin: 0, fontSize: 13, color: "var(--muted)", lineHeight: 1.5 }}>
+                Это действие удалит весь прогресс чтения и записи в трекере, но сохранит вашу библиотеку книг.
+              </p>
+            </div>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button
+                onClick={() => setResetConfirm(false)}
+                disabled={resetting}
+                style={{
+                  flex: 1, padding: "12px", borderRadius: 14,
+                  border: "1px solid var(--line)", background: "var(--paper-soft)",
+                  color: "var(--ink)", fontWeight: 700, fontSize: 14, cursor: "pointer",
+                }}
+              >
+                Отмена
+              </button>
+              <button
+                onClick={handleResetStats}
+                disabled={resetting}
+                style={{
+                  flex: 1, padding: "12px", borderRadius: 14,
+                  border: "none", background: "#e05252",
+                  color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer",
+                  opacity: resetting ? 0.7 : 1,
+                }}
+              >
+                {resetting ? "Сброс..." : "Сбросить"}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </>
   );
 }

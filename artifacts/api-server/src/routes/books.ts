@@ -169,6 +169,21 @@ router.post("/books", async (req: any, res) => {
   res.json({ item: book });
 });
 
+// Reset all reading statistics for the user (keeps books, zeroes progress)
+router.post("/stats/reset", async (req: any, res) => {
+  const userId = req.userId || 0;
+  if (userId === 0) {
+    res.status(401).json({ error: "Authentication required" });
+    return;
+  }
+  // Zero out read_pages for all user's books
+  await db
+    .update(booksTable)
+    .set({ readPages: 0 })
+    .where(eq(booksTable.userId, userId));
+  res.json({ ok: true });
+});
+
 router.delete("/books/:bookId", async (req: any, res) => {
   const userId = req.userId || 0;
   const parsed = DeleteBookParams.safeParse(req.params);
