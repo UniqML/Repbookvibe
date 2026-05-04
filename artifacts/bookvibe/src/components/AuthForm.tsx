@@ -44,23 +44,6 @@ export function AuthForm() {
     }
   });
 
-  // Auto-login with saved credentials
-  useEffect(() => {
-    if (!user && rememberMe && email && password) {
-      const autoLogin = async () => {
-        try {
-          setLoading(true);
-          await loginEmail(email, password);
-        } catch (err) {
-          console.error("Auto-login failed:", err);
-        } finally {
-          setLoading(false);
-        }
-      };
-      autoLogin();
-    }
-  }, []);
-
   // Save mode and email to localStorage whenever they change
   useEffect(() => {
     try {
@@ -128,22 +111,16 @@ export function AuthForm() {
     setError("");
     try {
       await loginEmail(email, password);
-      if (rememberMe) {
-        try {
+      try {
+        if (rememberMe) {
           localStorage.setItem("bookvibe_remember_email", email);
           localStorage.setItem("bookvibe_remember_password", password);
-          localStorage.setItem("bookvibe_remember_me", "true");
-        } catch {
-          // localStorage not available
-        }
-      } else {
-        try {
+        } else {
           localStorage.removeItem("bookvibe_remember_email");
           localStorage.removeItem("bookvibe_remember_password");
-          localStorage.setItem("bookvibe_remember_me", "false");
-        } catch {
-          // localStorage not available
         }
+      } catch {
+        // localStorage not available
       }
     } catch (err: any) {
       setError(err.message || "Login failed");
