@@ -193,16 +193,11 @@ export interface MusicSearchResult {
 }
 
 export interface ImageItem {
-  title?: string;
+  id: string;
+  title: string;
   url: string;
-  thumb?: string;
-  author?: string;
-  source?: string;
-}
-
-export interface ImageSearchResult {
-  query?: string;
-  items: ImageItem[];
+  thumbnail: string;
+  author: string;
 }
 
 export interface AiDiaryHelperBody {

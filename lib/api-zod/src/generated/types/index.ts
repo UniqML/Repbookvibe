@@ -26,7 +26,6 @@ export * from "./diaryItemResult";
 export * from "./diaryListResult";
 export * from "./healthStatus";
 export * from "./imageItem";
-export * from "./imageSearchResult";
 export * from "./listChatMessagesParams";
 export * from "./musicSearchResult";
 export * from "./musicTrack";

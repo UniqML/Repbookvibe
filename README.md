@@ -268,6 +268,7 @@
 
 ```
 DATABASE_URL=          # PostgreSQL connection string (предоставляется Replit автоматически)
+PGSSLROOTCERT=         # Путь к CA-сертификату PostgreSQL, если нужен sslmode=verify-full
 JWT_SECRET=            # Секрет для подписи JWT-токенов
 ADMIN_PASSWORD=        # Пароль для входа в /admin-panel-secret-777
 SMTP_HOST=             # SMTP-сервер для отправки кодов подтверждения
@@ -275,9 +276,77 @@ SMTP_PORT=             # Порт SMTP (обычно 587 или 465)
 SMTP_USER=             # Логин SMTP
 SMTP_PASS=             # Пароль SMTP
 SMTP_FROM=             # Email отправителя ("BookVibe <noreply@...>")
+PINTEREST_API_KEY=     # Bearer token Pinterest API для поиска картинок (опционально)
+UNSPLASH_ACCESS_KEY=   # Access Key Unsplash API, fallback для поиска картинок (опционально)
 OPENAI_API_KEY=        # Для AI-помощника дневника (опционально)
 PORT=                  # Назначается Replit автоматически (api-server = 8080)
 ```
+
+---
+
+## Поиск изображений
+
+Эндпоинт `GET /api/images/search?q=<query>&limit=20` возвращает массив:
+
+```json
+[
+  {
+    "id": "image-id",
+    "url": "https://...",
+    "title": "Image title",
+    "thumbnail": "https://...",
+    "author": "Author"
+  }
+]
+```
+
+Приоритет провайдеров:
+1. `PINTEREST_API_KEY` — Pinterest API (`Authorization: Bearer <token>`)
+2. `UNSPLASH_ACCESS_KEY` — Unsplash fallback (`Client-ID <key>`)
+3. Локальные curated-заглушки, если ключи не заданы или внешний API недоступен
+
+Результаты кэшируются на сервере на 15 минут, чтобы не спамить внешние API. Ошибки внешних API не ломают дневник: сервер вернёт curated-заглушки.
+
+Где взять ключи:
+- Pinterest: https://developers.pinterest.com/
+- Unsplash: https://unsplash.com/developers
+
+Ключи добавлять только в secrets/env. Не коммитить `.env` и реальные токены в репозиторий.
+
+---
+
+## GitHub Actions деплой на VPS
+
+Workflow: `.github/workflows/deploy.yml`
+
+Запускается при push в `main` и делает:
+- checkout кода;
+- установку Node.js 20 и pnpm;
+- `pnpm install --frozen-lockfile`;
+- `PORT=3000 BASE_PATH=/ pnpm build`;
+- SSH-деплой на VPS через `appleboy/ssh-action@v1.0.0`;
+- на сервере: `cd /var/www/bookvibe`, `git pull origin main`, установка зависимостей, сборка, `pm2 restart bookvibe-app`.
+
+### GitHub Repository Secrets
+
+Добавить в GitHub → Repository → Settings → Secrets and variables → Actions:
+
+```
+VPS_HOST=213.108.4.47
+VPS_USER=root
+VPS_SSH_KEY=<private SSH key for deploy>
+```
+
+Для SSH-ключа:
+
+```bash
+ssh-keygen -t ed25519 -C "bookvibe-github-actions" -f ~/.ssh/bookvibe_github_actions
+ssh-copy-id -i ~/.ssh/bookvibe_github_actions.pub root@213.108.4.47
+```
+
+В `VPS_SSH_KEY` вставить содержимое приватного файла `~/.ssh/bookvibe_github_actions`.
+
+Runtime env (`DATABASE_URL`, `PGSSLROOTCERT`, `JWT_SECRET`, `ADMIN_PASSWORD`, `MODERATION_MODE`, API keys) хранится на сервере в `/opt/bookvibe/.env.production` и читается pm2 `ecosystem.config.cjs`. Если решите генерировать `.env.production` из GitHub Actions, тогда добавьте эти значения как GitHub Secrets и записывайте файл в deploy step.
 
 ---
 

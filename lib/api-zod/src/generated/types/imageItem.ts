@@ -7,9 +7,9 @@
  */
 
 export interface ImageItem {
-  title?: string;
+  id: string;
+  title: string;
   url: string;
-  thumb?: string;
-  author?: string;
-  source?: string;
+  thumbnail: string;
+  author: string;
 }
