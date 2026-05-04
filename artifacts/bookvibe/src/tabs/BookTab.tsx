@@ -215,8 +215,6 @@ export function BookTab() {
     });
 
     qc.invalidateQueries({ queryKey: getListBooksQueryKey() });
-    setTimerRunning(false);
-    setTimerSeconds(0);
     setShowSession(false);
     setSessionSaved(true);
     if (finished) setShowFinish(true);
@@ -368,7 +366,7 @@ export function BookTab() {
               {/* Two action buttons */}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                 <button
-                  onClick={() => { setShowSession(true); setTimerRunning(false); }}
+                  onClick={() => { setShowSession(true); }}
                   style={{
                     border: 0, borderRadius: 999, padding: "12px",
                     background: "var(--accent)", color: "white",
