@@ -1,5 +1,3 @@
-import { Filter } from "bad-words";
-
 const CUSTOM_TERMS = [
   "бля",
   "блять",
@@ -35,9 +33,6 @@ export type ModerationResult = {
   violationType: string;
 };
 
-const filter = new Filter({ placeHolder: "*" });
-filter.addWords(...CUSTOM_TERMS);
-
 function getModerationMode(): ModerationMode {
   return process.env.MODERATION_MODE === "block" ? "block" : "replace";
 }
@@ -71,11 +66,10 @@ function replaceCustomTerms(text: string, terms: string[]): string {
 export function moderateChatText(text: string): ModerationResult {
   const originalText = text;
   const customMatches = findCustomTerms(text);
-  const badWordsFlagged = filter.isProfane(text);
-  const flagged = badWordsFlagged || customMatches.length > 0;
+  const flagged = customMatches.length > 0;
   const action = getModerationMode();
   const cleaned = flagged
-    ? replaceCustomTerms(filter.clean(text).replace(/\*+/g, "***"), customMatches)
+    ? replaceCustomTerms(text, customMatches)
     : text;
 
   return {

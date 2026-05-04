@@ -40,6 +40,9 @@ export function BookSearchModal({ open, onClose }: BookSearchModalProps) {
       const res = await fetch(
         `/api/books/search?q=${encodeURIComponent(query.trim())}&limit=10`
       );
+      if (!res.ok) {
+        throw new Error(`Search failed: ${res.status} ${res.statusText}`);
+      }
       const data = await res.json();
       setResults(data.items || []);
     } catch (error) {
