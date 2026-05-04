@@ -5,7 +5,7 @@ export function useBookState() {
     try {
       const stored = localStorage.getItem('bookvibe_active_book');
       return stored ? parseInt(stored, 10) : null;
-    } catch (e) {
+    } catch {
       return null;
     }
   });
@@ -19,8 +19,13 @@ export function useBookState() {
     }
   }, []);
 
+  const clearActiveBook = useCallback(() => {
+    setActiveBook(null);
+  }, [setActiveBook]);
+
   return {
     activeBookId,
-    setActiveBook
+    setActiveBook,
+    clearActiveBook,
   };
 }

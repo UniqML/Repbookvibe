@@ -128,7 +128,6 @@ export function BookTab() {
   const [savingDiary, setSavingDiary] = useState(false);
   const [savedDiary, setSavedDiary] = useState(false);
 
-  // Timer state
   const TIMER_RUNNING_KEY = "bookvibe_reading_timer_running";
   const TIMER_SECONDS_KEY = "bookvibe_reading_timer_seconds";
   const TIMER_UPDATED_AT_KEY = "bookvibe_reading_timer_updated_at";
@@ -137,6 +136,7 @@ export function BookTab() {
   const [showSession, setShowSession] = useState(false);
   const [pickerPage, setPickerPage] = useState<number | null>(null);
   const [sessionSaved, setSessionSaved] = useState(false);
+  const [bookShelfUpdateBusy, setBookShelfUpdateBusy] = useState<number | null>(null);
 
   const { data: booksData, isLoading } = useListBooks();
   const books: Book[] = booksData?.items || [];
@@ -196,11 +196,43 @@ export function BookTab() {
   const imageResults = imageData?.items || [];
 
   const { mutateAsync: saveBook } = useSaveBook();
-  useDeleteBook();
+  const deleteBook = useDeleteBook();
   const { mutateAsync: saveDiary } = useSaveDiaryEntry();
 
-  const handleAddBook = async (item: BookSearchItem, status: string) => {
-    const result = await saveBook({ data: { title: item.title, author: item.author || "", cover: item.cover || "", pages: item.pages || 0, isbn: item.isbn || "", external_id: item.external_id, source: item.source, description: item.description || "", status, shelf: "Новые", vibe: [] } });
+  const toggleFavorite = async (book: Book) => {
+    if (!book?.id) return;
+    setBookShelfUpdateBusy(book.id);
+    try {
+      const nextShelf = book.shelf === "Любимые" ? (book.status === "Хочу прочитать" ? "Хочу прочитать" : "Новые") : "Любимые";
+      await saveBook({
+        data: {
+          id: book.id,
+          title: book.title,
+          author: book.author || "",
+          cover: book.cover || "",
+          pages: book.pages || 0,
+          read_pages: book.read_pages || 0,
+          isbn: book.isbn || "",
+          status: book.status,
+          shelf: nextShelf,
+          vibe: book.vibe || [],
+          rating: book.rating || 0,
+        },
+      });
+      qc.invalidateQueries({ queryKey: getListBooksQueryKey() });
+    } finally {
+      setBookShelfUpdateBusy(null);
+    }
+  };
+
+  const openReadingForBook = (book: Book) => {
+    setActiveBook(book.id);
+    setPickerPage(book.read_pages || 1);
+    setShowSession(true);
+  };
+
+  const handleAddBook = async (item: BookSearchItem, status: string, shelf: string = "Новые") => {
+    const result = await saveBook({ data: { title: item.title, author: item.author || "", cover: item.cover || "", pages: item.pages || 0, isbn: item.isbn || "", external_id: item.external_id, source: item.source, description: item.description || "", status, shelf, vibe: [] } });
     qc.invalidateQueries({ queryKey: getListBooksQueryKey() });
     if (status === "Читаю" && result?.item?.id) {
       setActiveBook(result.item.id);
@@ -282,10 +314,10 @@ export function BookTab() {
   const now = new Date();
   const dateLabel = `${now.toLocaleDateString("ru-RU")} ${now.getHours().toString().padStart(2,"0")}:${now.getMinutes().toString().padStart(2,"0")}`;
 
+  const listBooks = (shelfName: string) => books.filter(b => b.shelf === shelfName);
+
   return (
     <div style={{ padding: "14px 18px 28px", display: "flex", flexDirection: "column", gap: 14 }}>
-
-      {/* Active Book */}
       {isLoading && <p style={{ color: "var(--muted)", fontSize: 13, textAlign: "center" }}>Загрузка...</p>}
       {!isLoading && activeBook ? (
         <div style={{ border: "1px solid var(--line)", background: "var(--paper-soft)", borderRadius: 28, padding: 14, display: "grid", gridTemplateColumns: "118px 1fr", gap: 16, boxShadow: "0 8px 32px rgba(44,33,27,0.1)" }}>
@@ -305,7 +337,7 @@ export function BookTab() {
                 <div style={{ height: 8, borderRadius: 999, background: "rgba(0,0,0,0.08)", overflow: "hidden", marginBottom: 4 }}>
                   <div style={{ height: "100%", borderRadius: "inherit", background: "linear-gradient(90deg, var(--accent), var(--accent-2))", width: `${progressPct}%` }} />
                 </div>
-                <span style={{ fontSize: 11, color: "var(--muted)" }}>{readPagesVal} / {pages} стр. ({progressPct}%)</span>
+                <span style={{ fontSize: 11, color: "var(--muted)", cursor: "pointer" }} onClick={() => openReadingForBook(activeBook)}>{readPagesVal} / {pages} стр. ({progressPct}%)</span>
               </div>
             )}
           </div>
@@ -318,21 +350,65 @@ export function BookTab() {
         </div>
       )}
 
-      {/* Reading session saved notification */}
       {sessionSaved && (
         <div style={{ background: "var(--accent)", color: "white", borderRadius: 18, padding: "12px 16px", textAlign: "center", fontWeight: 700, fontSize: 14 }}>
           ✓ Сеанс чтения сохранён в трекере!
         </div>
       )}
 
-      {/* Reading Timer + Session */}
+      {(listBooks("Хочу прочитать").length > 0 || listBooks("Любимые").length > 0) && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          {["Хочу прочитать", "Любимые"].map((shelfName) => {
+            const shelfBooks = listBooks(shelfName);
+            if (!shelfBooks.length) return null;
+            return (
+              <div key={shelfName} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <h4 style={{ margin: 0, fontSize: 14, color: "var(--ink)" }}>{shelfName}</h4>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10 }}>
+                  {shelfBooks.map(book => {
+                    const favorite = book.shelf === "Любимые";
+                    return (
+                      <div key={book.id} style={{ position: "relative" }}>
+                        <button
+                          onClick={() => toggleFavorite(book)}
+                          disabled={bookShelfUpdateBusy === book.id}
+                          style={{ position: "absolute", top: 8, right: 8, zIndex: 2, width: 30, height: 30, borderRadius: "50%", border: 0, background: "rgba(255,255,255,0.9)", color: favorite ? "#ef4444" : "rgba(0,0,0,0.35)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
+                          aria-label={favorite ? "Убрать из избранного" : "Добавить в избранное"}
+                        >
+                          ❤
+                        </button>
+                        <button
+                          onClick={() => openReadingForBook(book)}
+                          style={{ width: "100%", padding: 0, border: 0, background: "transparent", textAlign: "left", cursor: "pointer" }}
+                        >
+                          <img
+                            src={book.cover || "https://images.unsplash.com/photo-1495446815901-a7297e633e8d?auto=format&fit=crop&w=300&q=60"}
+                            alt={book.title}
+                            style={{ width: "100%", aspectRatio: "2/3", objectFit: "cover", borderRadius: 18, boxShadow: "0 8px 24px rgba(44,33,27,0.12)" }}
+                          />
+                          <div style={{ padding: "8px 4px 0" }}>
+                            <div style={{ color: "var(--ink)", fontSize: 13, fontWeight: 700, lineHeight: 1.25 }}>{book.title}</div>
+                            <div style={{ color: "var(--muted)", fontSize: 11, marginTop: 2 }}>{book.author}</div>
+                          </div>
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
       {activeBook && activeBook.status === "Читаю" && (
         <div style={{ border: "1px solid var(--line)", background: "var(--paper-soft)", borderRadius: 24, padding: 16, boxShadow: "0 4px 16px rgba(44,33,27,0.06)" }}>
           <h4 style={{ color: "var(--ink)", margin: "0 0 12px", fontWeight: 700, fontSize: 14 }}>Сеанс чтения</h4>
 
           {!showSession ? (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {/* Timer display */}
               <div style={{
                 background: "linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent), #1a1008 45%))",
                 borderRadius: 20, padding: "18px 20px",
@@ -376,7 +452,6 @@ export function BookTab() {
                 </div>
               </div>
 
-              {/* Two action buttons */}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                 <button
                   onClick={() => { setShowSession(true); }}
@@ -405,7 +480,6 @@ export function BookTab() {
               </div>
             </div>
           ) : (
-            /* Session save panel */
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               <div>
                 <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 2 }}>{dateLabel}</div>
@@ -449,292 +523,6 @@ export function BookTab() {
             </div>
           )}
         </div>
-      )}
-
-      {/* Finish book modal */}
-      {showFinish && activeBook && (
-        <div style={{ border: "2px solid var(--accent)", background: "var(--paper)", borderRadius: 28, padding: 20, boxShadow: "0 20px 60px rgba(44,33,27,0.18)", display: "flex", flexDirection: "column", gap: 14 }}>
-          <div>
-            <h3 style={{ color: "var(--ink)", margin: "0 0 2px", fontWeight: 800 }}>Книга прочитана!</h3>
-            <p style={{ color: "var(--muted)", margin: 0, fontSize: 13 }}>«{activeBook.title}»</p>
-          </div>
-
-          {/* Star rating */}
-          <div style={{ display: "flex", justifyContent: "center", gap: 6 }}>
-            {[1,2,3,4,5].map(n => (
-              <button key={n} onClick={() => setStarRating(n)}
-                style={{ border: 0, background: "transparent", fontSize: 34, cursor: "pointer", filter: n <= starRating ? "drop-shadow(0 2px 6px rgba(247,197,45,0.4))" : "none", color: n <= starRating ? "#f7c52d" : "rgba(0,0,0,0.12)", padding: 0 }}>
-                ★
-              </button>
-            ))}
-          </div>
-
-          {/* Book format */}
-          <div>
-            <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 600, marginBottom: 7 }}>Формат книги</div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6 }}>
-              {([
-                { key: "paper", label: "📖 Бумажная" },
-                { key: "digital", label: "💻 Эл. книга" },
-                { key: "audio", label: "🎧 Аудио" },
-              ] as const).map(f => (
-                <button key={f.key} onClick={() => setBookFormat(f.key)} style={{
-                  border: "1.5px solid " + (bookFormat === f.key ? "var(--accent)" : "var(--line)"),
-                  borderRadius: 12, padding: "9px 6px",
-                  background: bookFormat === f.key ? "color-mix(in srgb, var(--accent-2), white 30%)" : "transparent",
-                  color: bookFormat === f.key ? "var(--accent)" : "var(--muted)",
-                  fontSize: 11, fontWeight: 700, cursor: "pointer", lineHeight: 1.3,
-                }}>
-                  {f.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Binding (only for paper) */}
-          {bookFormat === "paper" && (
-            <div>
-              <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 600, marginBottom: 7 }}>Тип переплёта</div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
-                {([
-                  { key: "hard", label: "📦 Жёсткий" },
-                  { key: "soft", label: "📄 Мягкий" },
-                ] as const).map(b => (
-                  <button key={b.key} onClick={() => setBinding(b.key)} style={{
-                    border: "1.5px solid " + (binding === b.key ? "var(--accent)" : "var(--line)"),
-                    borderRadius: 12, padding: "9px 6px",
-                    background: binding === b.key ? "color-mix(in srgb, var(--accent-2), white 30%)" : "transparent",
-                    color: binding === b.key ? "var(--accent)" : "var(--muted)",
-                    fontSize: 11, fontWeight: 700, cursor: "pointer",
-                  }}>
-                    {b.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div style={{ display: "flex", gap: 8 }}>
-            <button onClick={handleFinishBook} style={{ flex: 2, border: 0, borderRadius: 999, padding: "13px", background: "var(--accent)", color: "white", fontWeight: 700, cursor: "pointer" }}>Сохранить</button>
-            <button onClick={() => setShowFinish(false)} style={{ flex: 1, border: "1px solid var(--line)", borderRadius: 999, padding: "13px", background: "transparent", color: "var(--muted)", cursor: "pointer" }}>Отмена</button>
-          </div>
-        </div>
-      )}
-
-      {/* Book search */}
-      {panel(
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, border: "1px solid var(--line)", background: "rgba(255,255,255,0.62)", borderRadius: 16, padding: "10px 14px", color: "var(--muted)" }}>
-            <Search size={16} />
-            <input
-              value={searchQ}
-              onChange={e => { setSearchQ(e.target.value); setSearchEnabled(false); }}
-              placeholder="Название книги или автор..."
-              style={{ flex: 1, border: 0, outline: 0, background: "transparent", color: "var(--ink)", fontSize: 14 }}
-              onKeyDown={e => e.key === "Enter" && setSearchEnabled(true)}
-            />
-          </div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button onClick={() => setSearchEnabled(true)} style={{ flex: 1, border: 0, borderRadius: 999, padding: "10px", background: "var(--accent)", color: "white", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
-              Искать в каталогах
-            </button>
-            <button onClick={() => {
-              const demo: BookSearchItem = { external_id: "demo-1", source: "demo", title: "Маленький принц", author: "Антуан де Сент-Экзюпери", cover: "https://images.unsplash.com/photo-1481627834876-b7833e8f5570?auto=format&fit=crop&w=300&q=60", pages: 112, isbn: "" };
-              handleAddBook(demo, "Читаю");
-            }} style={{ flex: 1, border: "1px solid var(--line)", borderRadius: 999, padding: "10px", background: "transparent", color: "var(--muted)", fontSize: 13, cursor: "pointer" }}>
-              Демо-книга
-            </button>
-          </div>
-          {searching && <p style={{ color: "var(--muted)", fontSize: 13, textAlign: "center" }}>Поиск...</p>}
-          {searchResults.map((item, i) => (
-            <div key={i} style={{ border: "1px solid var(--line)", background: "var(--paper)", borderRadius: 18, padding: 12, display: "grid", gridTemplateColumns: "52px 1fr", gap: 12, alignItems: "center" }}>
-              <img src={item.cover || "https://images.unsplash.com/photo-1495446815901-a7297e633e8d?auto=format&fit=crop&w=200&q=60"} alt={item.title}
-                style={{ width: "100%", aspectRatio: "2/3", objectFit: "cover", borderRadius: 10 }} />
-              <div>
-                <div style={{ fontWeight: 700, color: "var(--ink)", fontSize: 13 }}>{item.title}</div>
-                <div style={{ color: "var(--muted)", fontSize: 11, margin: "2px 0 8px" }}>{item.author}</div>
-                <div style={{ display: "flex", gap: 6 }}>
-                  {["Читаю", "Хочу прочитать"].map(s => (
-                    <button key={s} onClick={() => handleAddBook(item, s)}
-                      style={{ border: 0, borderRadius: 999, padding: "5px 10px", background: s === "Читаю" ? "var(--accent)" : "color-mix(in srgb, var(--accent-2), white 30%)", color: s === "Читаю" ? "white" : "var(--accent)", fontSize: 11, cursor: "pointer", fontWeight: 600 }}>
-                      {s}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>,
-        "Найти книгу"
-      )}
-
-      {/* Emotional ratings */}
-      {activeBook && panel(
-        <div style={{ display: "grid", gap: 10 }}>
-          {RATING_KEYS.map(key => (
-            <label key={key} style={{ display: "grid", gridTemplateColumns: "86px 1fr 22px", gap: 10, alignItems: "center" }}>
-              <span style={{ fontSize: 13, color: "var(--muted)" }}>{key}</span>
-              <input type="range" min={0} max={10} value={ratings[key] || 0}
-                onChange={e => setRatings(prev => ({ ...prev, [key]: Number(e.target.value) }))}
-                style={{ accentColor: "var(--accent)" }} />
-              <span style={{ fontSize: 13, color: "var(--accent)", fontWeight: 700 }}>{ratings[key] || 0}</span>
-            </label>
-          ))}
-        </div>,
-        "Эмоциональные оценки"
-      )}
-
-      {/* Quote & Note */}
-      {activeBook && panel(
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <textarea
-            value={quote}
-            onChange={e => setQuote(e.target.value)}
-            placeholder="Любимая цитата из книги..."
-            rows={2}
-            style={{ border: "1px solid var(--line)", borderRadius: 14, padding: "10px 12px", background: "rgba(255,255,255,0.65)", color: "var(--ink)", fontSize: 14, outline: "none", resize: "none", fontFamily: "inherit" }}
-          />
-          <textarea
-            value={note}
-            onChange={e => setNote(e.target.value)}
-            placeholder="Ваши мысли о книге..."
-            rows={3}
-            style={{ border: "1px solid var(--line)", borderRadius: 14, padding: "10px 12px", background: "rgba(255,255,255,0.65)", color: "var(--ink)", fontSize: 14, outline: "none", resize: "none", fontFamily: "inherit" }}
-          />
-        </div>,
-        "Цитата и заметки"
-      )}
-
-      {/* Stickers */}
-      {activeBook && panel(
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-          {STICKERS.map(s => (
-            <button key={s} onClick={() => toggleSticker(s)}
-              style={{ border: 0, borderRadius: 999, padding: "7px 12px", background: selectedStickers.includes(s) ? "var(--accent)" : "color-mix(in srgb, var(--accent-2), white 38%)", color: selectedStickers.includes(s) ? "white" : "var(--accent)", fontSize: 13, cursor: "pointer" }}>
-              {s}
-            </button>
-          ))}
-        </div>,
-        "Стикеры настроения"
-      )}
-
-      {/* Music */}
-      {activeBook && panel(
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <div style={{ display: "flex", gap: 8 }}>
-            <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 8, border: "1px solid var(--line)", background: "rgba(255,255,255,0.62)", borderRadius: 14, padding: "10px 12px" }}>
-              <Music size={14} style={{ color: "var(--muted)", flexShrink: 0 }} />
-              <input
-                value={musicQ}
-                onChange={e => { setMusicQ(e.target.value); setMusicSearchEnabled(false); }}
-                placeholder="Найти трек..."
-                onKeyDown={e => e.key === "Enter" && setMusicSearchEnabled(true)}
-                style={{ flex: 1, border: 0, outline: 0, background: "transparent", color: "var(--ink)", fontSize: 13 }}
-              />
-            </div>
-            <button onClick={() => setMusicSearchEnabled(true)} style={{ border: 0, borderRadius: 14, padding: "0 14px", background: "var(--accent)", color: "white", fontSize: 13, cursor: "pointer" }}>Найти</button>
-          </div>
-          {musicSearching && <p style={{ color: "var(--muted)", fontSize: 13 }}>Поиск...</p>}
-          {Object.keys(selectedMusic).length > 0 && (
-            <div style={{ padding: 10, background: "color-mix(in srgb, var(--accent-2), white 30%)", borderRadius: 14 }}>
-              {Object.entries(selectedMusic).map(([track, artist]) => (
-                <div key={track} style={{ fontSize: 13, color: "var(--ink)", display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ fontWeight: 600 }}>{track}</span>
-                  <span style={{ color: "var(--muted)" }}>{artist}</span>
-                </div>
-              ))}
-            </div>
-          )}
-          {musicResults.map((t, i) => (
-            <div key={i} style={{ display: "flex", gap: 10, alignItems: "center", padding: "8px 0", borderBottom: "1px solid var(--line)" }}>
-              {t.cover && <img src={t.cover} alt={t.title} style={{ width: 42, height: 42, borderRadius: 10, objectFit: "cover" }} />}
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 600, fontSize: 13, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.title}</div>
-                <div style={{ color: "var(--muted)", fontSize: 11 }}>{t.artist}</div>
-              </div>
-              <button onClick={() => setSelectedMusic(prev => ({ ...prev, [t.title]: t.artist }))}
-                style={{ border: 0, background: "transparent", color: "var(--accent)", cursor: "pointer", display: "flex", padding: 4 }}>
-                <Plus size={16} />
-              </button>
-            </div>
-          ))}
-        </div>,
-        "Музыка книги"
-      )}
-
-      {/* Images */}
-      {activeBook && panel(
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <div style={{ display: "flex", gap: 8 }}>
-            <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 8, border: "1px solid var(--line)", background: "rgba(255,255,255,0.62)", borderRadius: 14, padding: "10px 12px" }}>
-              <Image size={14} style={{ color: "var(--muted)", flexShrink: 0 }} />
-              <input
-                value={imageQ}
-                onChange={e => { setImageQ(e.target.value); setImageSearchEnabled(false); }}
-                placeholder="Найти картинки..."
-                onKeyDown={e => e.key === "Enter" && setImageSearchEnabled(true)}
-                style={{ flex: 1, border: 0, outline: 0, background: "transparent", color: "var(--ink)", fontSize: 13 }}
-              />
-            </div>
-            <button onClick={() => setImageSearchEnabled(true)} style={{ border: 0, borderRadius: 14, padding: "0 14px", background: "var(--accent)", color: "white", fontSize: 13, cursor: "pointer" }}>Найти</button>
-          </div>
-          {imageSearching && <p style={{ color: "var(--muted)", fontSize: 13 }}>Поиск...</p>}
-          {imageResults.length > 0 && (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6 }}>
-              {imageResults.map((img, i) => {
-                const selected = selectedImages.includes(img.url);
-                return (
-                  <div key={i} style={{ position: "relative", cursor: "pointer" }} onClick={() => setSelectedImages(prev => selected ? prev.filter(x => x !== img.url) : [...prev, img.url])}>
-                    <img src={img.thumb || img.url} alt={img.title || ""} style={{ width: "100%", aspectRatio: "1", objectFit: "cover", borderRadius: 10, opacity: selected ? 0.7 : 1, border: selected ? "2px solid var(--accent)" : "2px solid transparent" }} />
-                    {selected && (
-                      <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        <Check size={20} color="var(--accent)" />
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>,
-        "Картинки к книге"
-      )}
-
-      {/* Save diary */}
-      {activeBook && (
-        <button
-          onClick={handleSaveDiary}
-          disabled={savingDiary}
-          style={{ border: 0, borderRadius: 999, padding: "14px", background: savedDiary ? "#5d8b67" : "var(--accent)", color: "white", fontWeight: 700, fontSize: 15, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
-        >
-          <Check size={16} />
-          {savedDiary ? "Сохранено!" : savingDiary ? "Сохраняю..." : "Сохранить запись в дневник"}
-        </button>
-      )}
-
-      {/* Multi-book selector */}
-      {books.filter(b => b.status === "Читаю").length > 1 && panel(
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {books.filter(b => b.status === "Читаю").map(book => (
-            <button
-              key={book.id}
-              onClick={() => { setActiveBook(book.id); setPickerPage(book.read_pages || 1); }}
-              style={{
-                border: book.id === activeBook?.id ? "2px solid var(--accent)" : "1px solid var(--line)",
-                background: book.id === activeBook?.id ? "color-mix(in srgb, var(--accent-2), white 30%)" : "transparent",
-                borderRadius: 16, padding: "10px 12px", cursor: "pointer",
-                display: "grid", gridTemplateColumns: "42px 1fr", gap: 10, alignItems: "center", textAlign: "left",
-              }}
-            >
-              <img src={book.cover || ""} alt={book.title} style={{ width: "100%", aspectRatio: "2/3", objectFit: "cover", borderRadius: 8 }} />
-              <div>
-                <div style={{ fontWeight: 700, color: "var(--ink)", fontSize: 13 }}>{book.title}</div>
-                <div style={{ color: "var(--muted)", fontSize: 11 }}>{book.read_pages || 0} / {book.pages || "?"} стр.</div>
-              </div>
-            </button>
-          ))}
-        </div>,
-        "Читаю сейчас"
       )}
     </div>
   );

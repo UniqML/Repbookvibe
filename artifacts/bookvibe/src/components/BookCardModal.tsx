@@ -1,4 +1,4 @@
-import { X, Printer, Download, Share2 } from "lucide-react";
+import { X, Printer, Download, Share2, Heart } from "lucide-react";
 import type { Book } from "@workspace/api-client-react";
 import { useRef, useState } from "react";
 import { RatingsPanel } from "./RatingsPanel";
@@ -59,7 +59,7 @@ export function BookCardModal({ book, diaryEntry, onClose }: BookCardModalProps)
 
   const handleShare = () => {
     const text = `Я прочитал(а) "${book.title}" ${book.author ? `автора ${book.author}` : ""} ${book.rating ? `(оценка: ${Math.round(book.rating)}/5)` : ""}. BookVibe 📚`;
-    
+
     if (navigator.share) {
       navigator.share({ title: book.title, text });
     } else {
@@ -68,13 +68,15 @@ export function BookCardModal({ book, diaryEntry, onClose }: BookCardModalProps)
         { name: "WhatsApp", url: `https://wa.me/?text=${encodeURIComponent(text)}` },
         { name: "VK", url: `https://vk.com/share.php?url=bookvibe.app&title=${encodeURIComponent(book.title)}&description=${encodeURIComponent(text)}` },
       ];
-      
+
       const shareMenu = options.map(o => `${o.name}`).join("\n");
       const choice = prompt(`Выберите платформу для шеринга:\n${shareMenu}\n(или отмените)`);
       const selected = options.find(o => o.name.toLowerCase().includes(choice?.toLowerCase() || ""));
       if (selected) window.open(selected.url, "_blank");
     }
   };
+
+  const diaryBook = diaryEntry?.book || book;
 
   return (
     <div style={{
@@ -87,7 +89,6 @@ export function BookCardModal({ book, diaryEntry, onClose }: BookCardModalProps)
         maxWidth: 500, maxHeight: "90vh", overflow: "auto",
         boxShadow: "0 20px 60px rgba(0,0,0,0.3)", width: "100%",
       }} onClick={(e) => e.stopPropagation()}>
-        {/* Close button */}
         <button onClick={onClose} style={{
           position: "absolute", top: 14, right: 14,
           width: 32, height: 32, borderRadius: "50%",
@@ -98,12 +99,10 @@ export function BookCardModal({ book, diaryEntry, onClose }: BookCardModalProps)
           <X size={16} />
         </button>
 
-        {/* Card content */}
         <div ref={cardRef} style={{
           background: "white", borderRadius: 16, padding: 20,
           marginBottom: 16,
         }}>
-          {/* Cover & title */}
           <div style={{ display: "grid", gridTemplateColumns: "100px 1fr", gap: 14, marginBottom: 16 }}>
             <img src={book.cover || ""} alt={book.title}
               style={{ width: "100%", aspectRatio: "2/3", objectFit: "cover", borderRadius: 10 }} />
@@ -125,7 +124,6 @@ export function BookCardModal({ book, diaryEntry, onClose }: BookCardModalProps)
             </div>
           </div>
 
-          {/* Diary entries */}
           {diaryEntry && (
             <>
               {diaryEntry.quote && (
@@ -188,7 +186,6 @@ export function BookCardModal({ book, diaryEntry, onClose }: BookCardModalProps)
           )}
         </div>
 
-        {/* Action buttons */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
           <button onClick={handlePrint} style={{
             border: "1px solid var(--line)", background: "transparent",
@@ -219,7 +216,6 @@ export function BookCardModal({ book, diaryEntry, onClose }: BookCardModalProps)
           </button>
         </div>
 
-        {/* Ratings */}
         <div style={{ padding: "16px 16px", borderTop: "1px solid var(--line)" }}>
           <h4 style={{ color: "var(--ink)", margin: "0 0 12px", fontWeight: 700, fontSize: 14 }}>
             Оценки читателей
