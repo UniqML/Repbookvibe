@@ -29,7 +29,7 @@ import type {
   DiaryItemResult,
   DiaryListResult,
   HealthStatus,
-  ImageSearchResult,
+  ImageItem,
   ListChatMessagesParams,
   MusicSearchResult,
   ReportItemResult,
@@ -1082,7 +1082,7 @@ export function useSearchMusic<
 }
 
 /**
- * @summary Search images via Unsplash
+ * @summary Search images via Pinterest or Unsplash fallback
  */
 export const getSearchImagesUrl = (params: SearchImagesParams) => {
   const normalizedParams = new URLSearchParams();
@@ -1103,8 +1103,8 @@ export const getSearchImagesUrl = (params: SearchImagesParams) => {
 export const searchImages = async (
   params: SearchImagesParams,
   options?: RequestInit,
-): Promise<ImageSearchResult> => {
-  return customFetch<ImageSearchResult>(getSearchImagesUrl(params), {
+): Promise<ImageItem[]> => {
+  return customFetch<ImageItem[]>(getSearchImagesUrl(params), {
     ...options,
     method: "GET",
   });
@@ -1149,7 +1149,7 @@ export type SearchImagesQueryResult = NonNullable<
 export type SearchImagesQueryError = ErrorType<unknown>;
 
 /**
- * @summary Search images via Unsplash
+ * @summary Search images via Pinterest or Unsplash fallback
  */
 
 export function useSearchImages<

@@ -314,27 +314,23 @@ export const SearchMusicResponse = zod.object({
 });
 
 /**
- * @summary Search images via Unsplash
+ * @summary Search images via Pinterest or Unsplash fallback
  */
-export const searchImagesQueryLimitDefault = 6;
+export const searchImagesQueryLimitDefault = 20;
 
 export const SearchImagesQueryParams = zod.object({
   q: zod.coerce.string(),
   limit: zod.coerce.number().default(searchImagesQueryLimitDefault),
 });
 
-export const SearchImagesResponse = zod.object({
-  query: zod.string().optional(),
-  items: zod.array(
-    zod.object({
-      title: zod.string().optional(),
-      url: zod.string(),
-      thumb: zod.string().optional(),
-      author: zod.string().optional(),
-      source: zod.string().optional(),
-    }),
-  ),
+export const SearchImagesResponseItem = zod.object({
+  id: zod.string(),
+  title: zod.string(),
+  url: zod.string(),
+  thumbnail: zod.string(),
+  author: zod.string(),
 });
+export const SearchImagesResponse = zod.array(SearchImagesResponseItem);
 
 /**
  * @summary Ask AI for diary writing ideas

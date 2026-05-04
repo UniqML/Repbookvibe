@@ -268,7 +268,7 @@ paths:
     get:
       operationId: searchImages
       tags: [images]
-      summary: Search images via Unsplash
+      summary: Search images via Pinterest or Unsplash fallback
       parameters:
         - name: q
           in: query
@@ -280,14 +280,16 @@ paths:
           required: false
           schema:
             type: integer
-            default: 6
+            default: 20
       responses:
         "200":
           description: Image search results
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ImageSearchResult"
+                type: array
+                items:
+                  $ref: "#/components/schemas/ImageItem"
 
   /ai/diary-helper:
     post:
@@ -726,30 +728,22 @@ components:
     ImageItem:
       type: object
       properties:
+        id:
+          type: string
         title:
           type: string
         url:
           type: string
-        thumb:
+        thumbnail:
           type: string
         author:
           type: string
-        source:
-          type: string
       required:
+        - id
         - url
-
-    ImageSearchResult:
-      type: object
-      properties:
-        query:
-          type: string
-        items:
-          type: array
-          items:
-            $ref: "#/components/schemas/ImageItem"
-      required:
-        - items
+        - title
+        - thumbnail
+        - author
 
     AiDiaryHelperBody:
       type: object

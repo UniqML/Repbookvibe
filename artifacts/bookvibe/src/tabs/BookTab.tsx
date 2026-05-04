@@ -112,7 +112,7 @@ function DiaryModal({
     { q: imageQ || " ", limit: 9 },
     { query: { enabled: imageEnabled && imageQ.trim().length > 0, queryKey: getSearchImagesQueryKey({ q: imageQ, limit: 9 }) } }
   );
-  const imageResults = imageData?.items || [];
+  const imageResults = imageData || [];
 
   const toggleSticker = (s: string) =>
     setSelectedStickers(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s]);
@@ -358,7 +358,7 @@ function DiaryModal({
                           setImageQ("");
                         }}
                         style={{ border: "2px solid transparent", padding: 0, borderRadius: 12, overflow: "hidden", cursor: "pointer" }}>
-                        <img src={item.url} alt={item.title || "image"} style={{ width: "100%", aspectRatio: "1 / 1", objectFit: "cover" }} />
+                        <img src={item.thumbnail || item.url} alt={item.title || "image"} style={{ width: "100%", aspectRatio: "1 / 1", objectFit: "cover" }} />
                       </button>
                     ))}
                   </div>
