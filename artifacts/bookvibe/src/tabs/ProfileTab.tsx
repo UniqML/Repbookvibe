@@ -4,12 +4,13 @@ import { useReadingGoal } from "@/hooks/useReadingGoal";
 import { useAchievements } from "@/hooks/useAchievements";
 import { AuthForm } from "@/components/AuthForm";
 import { useListBooks, useListDiaryEntries } from "@workspace/api-client-react";
-import type { Book } from "@workspace/api-client-react";
+import type { Book, DiaryEntry } from "@workspace/api-client-react";
 import { useLanguage } from "@/hooks/useLanguage";
 import { BookCardModal } from "@/components/BookCardModal";
+import { DiaryDetailModal } from "@/components/DiaryDetailModal";
 import { UserAvatar } from "@/components/UserAvatar";
 import { generateAvatarSeeds, getDefaultAvatarSeed } from "@/lib/avatar";
-import { LogOut, Target, Trophy } from "lucide-react";
+import { LogOut, Target, Trophy, BookOpen } from "lucide-react";
 
 export function ProfileTab() {
   const { user, logout, updateProfile } = useAuth();
@@ -24,6 +25,7 @@ export function ProfileTab() {
   const goal = getGoal();
 
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
+  const [selectedDiaryEntry, setSelectedDiaryEntry] = useState<DiaryEntry | null>(null);
   const [editingName, setEditingName] = useState(false);
   const [newName, setNewName] = useState(user?.displayName || "");
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
@@ -38,6 +40,10 @@ export function ProfileTab() {
 
   const getDiaryForBook = (bookId: number) => {
     return diaryEntries.find((d: any) => d.book_id === bookId);
+  };
+
+  const getBookForEntry = (bookId: number): Book | null => {
+    return books.find((b) => b.id === bookId) || null;
   };
 
   const displayName = user?.displayName || (t("guestAccount"));
@@ -454,11 +460,132 @@ export function ProfileTab() {
         lang === "ru" ? "Достижения" : "Achievements"
       )}
 
+      {/* Diary feed */}
+      {!isGuest && panel(
+        <div>
+          {diaryEntries.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "24px 0" }}>
+              <BookOpen size={40} style={{ color: "var(--accent)", opacity: 0.3, marginBottom: 12 }} />
+              <p style={{ margin: "0 0 4px", color: "var(--ink)", fontWeight: 700, fontSize: 14 }}>
+                Дневник пока пуст
+              </p>
+              <p style={{ margin: 0, color: "var(--muted)", fontSize: 12 }}>
+                Добавьте первую запись в разделе «Книга»
+              </p>
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {(diaryEntries as DiaryEntry[]).map((entry) => {
+                const book = getBookForEntry(entry.book_id);
+                const stickers = entry.stickers || [];
+                const hasImages = (entry.images || []).length > 0;
+                const hasMusic = entry.music && Object.keys(entry.music).length > 0;
+                const notePreview = entry.note
+                  ? entry.note.length > 100 ? entry.note.slice(0, 100) + "…" : entry.note
+                  : null;
+                return (
+                  <button
+                    key={entry.id}
+                    onClick={() => setSelectedDiaryEntry(entry)}
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "52px 1fr",
+                      gap: 12,
+                      padding: "12px",
+                      border: "1px solid var(--line)",
+                      borderRadius: 18,
+                      background: "var(--paper)",
+                      cursor: "pointer",
+                      textAlign: "left",
+                      transition: "box-shadow 0.15s, transform 0.15s",
+                      boxShadow: "0 2px 8px rgba(44,33,27,0.05)",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.boxShadow = "0 6px 20px rgba(44,33,27,0.12)";
+                      e.currentTarget.style.transform = "translateY(-1px)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.boxShadow = "0 2px 8px rgba(44,33,27,0.05)";
+                      e.currentTarget.style.transform = "translateY(0)";
+                    }}
+                  >
+                    {/* Cover */}
+                    <img
+                      src={book?.cover || "https://images.unsplash.com/photo-1495446815901-a7297e633e8d?auto=format&fit=crop&w=200&q=60"}
+                      alt={book?.title || "Книга"}
+                      style={{ width: 52, height: 78, objectFit: "cover", borderRadius: 10, flexShrink: 0 }}
+                    />
+                    {/* Content */}
+                    <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 4 }}>
+                      <div style={{ fontWeight: 800, color: "var(--ink)", fontSize: 13, lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {book?.title || "Книга"}
+                      </div>
+                      {book?.author && (
+                        <div style={{ color: "var(--muted)", fontSize: 11 }}>{book.author}</div>
+                      )}
+                      {book?.rating ? (
+                        <div style={{ color: "#f7c52d", fontSize: 12 }}>
+                          {"★".repeat(Math.round(book.rating))}{"☆".repeat(5 - Math.round(book.rating))}
+                        </div>
+                      ) : null}
+                      {notePreview && (
+                        <div style={{ color: "var(--ink)", fontSize: 12, lineHeight: 1.5, opacity: 0.8 }}>
+                          {notePreview}
+                        </div>
+                      )}
+                      {!notePreview && entry.quote && (
+                        <div style={{ color: "var(--ink)", fontSize: 12, fontStyle: "italic", opacity: 0.75 }}>
+                          «{entry.quote.length > 80 ? entry.quote.slice(0, 80) + "…" : entry.quote}»
+                        </div>
+                      )}
+                      {/* Pills row */}
+                      {(stickers.length > 0 || hasImages || hasMusic) && (
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 2 }}>
+                          {stickers.slice(0, 3).map((s) => (
+                            <span key={s} style={{
+                              background: "color-mix(in srgb, var(--accent-2), white 35%)",
+                              color: "var(--accent)", padding: "2px 8px",
+                              borderRadius: 999, fontSize: 10, fontWeight: 600,
+                            }}>
+                              {s}
+                            </span>
+                          ))}
+                          {stickers.length > 3 && (
+                            <span style={{ color: "var(--muted)", fontSize: 10, padding: "2px 4px" }}>
+                              +{stickers.length - 3}
+                            </span>
+                          )}
+                          {hasImages && (
+                            <span style={{ color: "var(--muted)", fontSize: 10, padding: "2px 4px" }}>🖼</span>
+                          )}
+                          {hasMusic && (
+                            <span style={{ color: "var(--muted)", fontSize: 10, padding: "2px 4px" }}>🎵</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>,
+        lang === "ru" ? "Мой дневник" : "My Diary"
+      )}
+
       {selectedBook && (
         <BookCardModal
           book={selectedBook}
           onClose={() => setSelectedBook(null)}
           diaryEntry={getDiaryForBook(selectedBook.id)}
+        />
+      )}
+
+      {selectedDiaryEntry && (
+        <DiaryDetailModal
+          entry={selectedDiaryEntry}
+          book={getBookForEntry(selectedDiaryEntry.book_id)}
+          onClose={() => setSelectedDiaryEntry(null)}
         />
       )}
 
