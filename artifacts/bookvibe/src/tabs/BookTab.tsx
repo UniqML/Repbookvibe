@@ -356,6 +356,138 @@ export function BookTab() {
         </div>
       )}
 
+      {activeBook && activeBook.status === "Читаю" && (
+        <>
+          <div style={{ border: "1px solid var(--line)", background: "var(--paper-soft)", borderRadius: 24, padding: 16, boxShadow: "0 4px 16px rgba(44,33,27,0.06)" }}>
+            <div style={{ display: "flex", gap: 8 }}>
+              <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 10, border: "1px solid var(--line)", background: "rgba(255,255,255,0.62)", borderRadius: 18, padding: "10px 14px", color: "var(--muted)" }}>
+                <Search size={16} />
+                <input
+                  value={musicQ}
+                  onChange={e => { setMusicQ(e.target.value); setMusicSearchEnabled(true); }}
+                  placeholder="Поиск музыки..."
+                  style={{ flex: 1, border: 0, outline: 0, background: "transparent", color: "var(--ink)", fontSize: 14, fontFamily: "inherit" }}
+                />
+              </div>
+              <button
+                onClick={() => setMusicSearchEnabled(true)}
+                style={{ border: 0, borderRadius: 18, padding: "10px 14px", background: "var(--accent)", color: "white", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontWeight: 700, fontSize: 13 }}
+              >
+                <Music size={16} />
+                Музыка
+              </button>
+            </div>
+            <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+              <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 10, border: "1px solid var(--line)", background: "rgba(255,255,255,0.62)", borderRadius: 18, padding: "10px 14px", color: "var(--muted)" }}>
+                <Image size={16} />
+                <input
+                  value={imageQ}
+                  onChange={e => { setImageQ(e.target.value); setImageSearchEnabled(true); }}
+                  placeholder="Поиск картинок..."
+                  style={{ flex: 1, border: 0, outline: 0, background: "transparent", color: "var(--ink)", fontSize: 14, fontFamily: "inherit" }}
+                />
+              </div>
+              <button
+                onClick={() => setImageSearchEnabled(true)}
+                style={{ border: 0, borderRadius: 18, padding: "10px 14px", background: "var(--accent)", color: "white", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontWeight: 700, fontSize: 13 }}
+              >
+                <Image size={16} />
+                Картинки
+              </button>
+            </div>
+
+            {musicSearchEnabled && musicQ.trim().length > 0 && (
+              <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
+                {musicSearching && <p style={{ color: "var(--muted)", fontSize: 13 }}>Поиск музыки...</p>}
+                {!musicSearching && musicResults.length === 0 && <p style={{ color: "var(--muted)", fontSize: 13 }}>Ничего не найдено</p>}
+                {musicResults.map(item => (
+                  <button
+                    key={item.title}
+                    onClick={() => setSelectedMusic(prev => ({ ...prev, [item.title]: item.artist || "" }))}
+                    style={{ border: "1px solid var(--line)", background: "white", borderRadius: 16, padding: 10, textAlign: "left", cursor: "pointer" }}
+                  >
+                    <div style={{ fontWeight: 700, color: "var(--ink)" }}>{item.title}</div>
+                    <div style={{ fontSize: 12, color: "var(--muted)" }}>{item.artist || ""}</div>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {imageSearchEnabled && imageQ.trim().length > 0 && (
+              <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+                {imageSearching && <p style={{ color: "var(--muted)", fontSize: 13, gridColumn: "1 / -1" }}>Поиск картинок...</p>}
+                {imageResults.map((item, idx) => (
+                  <button
+                    key={item.url || idx}
+                    onClick={() => setSelectedImages(prev => prev.includes(item.url) ? prev : [...prev, item.url])}
+                    style={{ border: "1px solid var(--line)", background: "white", padding: 0, borderRadius: 14, overflow: "hidden", cursor: "pointer" }}
+                  >
+                    <img src={item.url} alt={item.title || "image"} style={{ width: "100%", aspectRatio: "1 / 1", objectFit: "cover" }} />
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div style={{ border: "1px solid var(--line)", background: "var(--paper-soft)", borderRadius: 24, padding: 16, boxShadow: "0 4px 16px rgba(44,33,27,0.06)", marginTop: 14 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <textarea
+                value={quote}
+                onChange={e => setQuote(e.target.value)}
+                placeholder="Цитата после прочтения"
+                style={{ width: "100%", minHeight: 72, borderRadius: 16, border: "1px solid var(--line)", padding: 12, resize: "vertical", fontFamily: "inherit" }}
+              />
+              <textarea
+                value={note}
+                onChange={e => setNote(e.target.value)}
+                placeholder="Заметка после прочтения"
+                style={{ width: "100%", minHeight: 96, borderRadius: 16, border: "1px solid var(--line)", padding: 12, resize: "vertical", fontFamily: "inherit" }}
+              />
+              <div style={{ display: "grid", gap: 10 }}>
+                {RATING_KEYS.map(key => (
+                  <div key={key}>
+                    <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 4 }}>{key}</div>
+                    <input
+                      type="range"
+                      min={0}
+                      max={10}
+                      value={ratings[key] ?? 0}
+                      onChange={e => setRatings(prev => ({ ...prev, [key]: Number(e.target.value) }))}
+                      style={{ width: "100%" }}
+                    />
+                  </div>
+                ))}
+              </div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                {STICKERS.map(s => (
+                  <button
+                    key={s}
+                    onClick={() => toggleSticker(s)}
+                    style={{
+                      border: 0,
+                      borderRadius: 999,
+                      padding: "8px 12px",
+                      background: selectedStickers.includes(s) ? "var(--accent)" : "rgba(0,0,0,0.06)",
+                      color: selectedStickers.includes(s) ? "white" : "var(--ink)",
+                      cursor: "pointer",
+                      fontSize: 12,
+                    }}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+              <button
+                onClick={handleSaveDiary}
+                style={{ border: 0, borderRadius: 999, padding: "12px 14px", background: "var(--accent)", color: "white", fontWeight: 800, cursor: "pointer" }}
+              >
+                Сохранить заметку
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
       {(shelfBooks("Хочу прочитать").length > 0 || shelfBooks("Любимые").length > 0) && (
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           {["Хочу прочитать", "Любимые"].map((shelfName) => {
