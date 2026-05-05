@@ -19,7 +19,7 @@ jobs:
           script: |
             set -e
 
-            cd ${{ secrets.VPS_PROJECT_PATH }}
+            cd /opt/bookvibe
 
             echo "==> git pull"
             git pull origin main
