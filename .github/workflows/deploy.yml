@@ -71,6 +71,7 @@ jobs:
 
             echo "==> Build frontend"
             PORT=22200 BASE_PATH=/ VITE_API_URL=/api NODE_ENV=production pnpm --filter @workspace/bookvibe run build
+            chmod -R a+rX artifacts/bookvibe/dist/public
 
             echo "==> Restart pm2"
             export DATABASE_URL JWT_SECRET ADMIN_PASSWORD UNSPLASH_ACCESS_KEY PINTEREST_API_KEY
