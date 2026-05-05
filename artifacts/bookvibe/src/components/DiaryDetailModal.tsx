@@ -451,14 +451,21 @@ export function DiaryDetailModal({ entry, book, onClose }: DiaryDetailModalProps
             />
           )}
           <div style={{ flex: 1, minWidth: 0 }}>
-            <h3 style={{ margin: 0, color: "var(--ink)", fontWeight: 800, fontSize: 16, lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <h3 style={{ margin: 0, color: "var(--ink)", fontWeight: 800, fontSize: 16, lineHeight: 1.25 }}>
               {book?.title || "Книга"}
             </h3>
             {book?.author && (
               <p style={{ margin: "2px 0 0", color: "var(--muted)", fontSize: 12 }}>{book.author}</p>
             )}
+            {book?.description && (() => {
+              const year = book.description.match(/\b(19|20)\d{2}\b/)?.[0];
+              const publisherMatch = book.description.match(/(?:издательство|изд\.|publisher[:\s]+|—\s*)([A-ZА-Я][^,.\n]{2,30})/i);
+              const publisher = publisherMatch?.[1]?.trim();
+              const meta = [publisher, year].filter(Boolean).join(", ");
+              return meta ? <p style={{ margin: "2px 0 0", color: "var(--muted)", fontSize: 11, opacity: 0.7 }}>{meta}</p> : null;
+            })()}
             {book?.rating ? (
-              <div style={{ color: "#f7c52d", fontSize: 14, marginTop: 2 }}>
+              <div style={{ color: "#f7c52d", fontSize: 13, marginTop: 2 }}>
                 {"★".repeat(Math.round(book.rating))}{"☆".repeat(5 - Math.round(book.rating))}
               </div>
             ) : null}

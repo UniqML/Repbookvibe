@@ -188,7 +188,10 @@ function DiaryModal({
               {book.author && <div style={{ fontSize: 11, color: "var(--muted)", opacity: 0.75 }}>{book.author}</div>}
               {book.description && (() => {
                 const year = book.description.match(/\b(19|20)\d{2}\b/)?.[0];
-                return year ? <div style={{ fontSize: 10, color: "var(--muted)", opacity: 0.55 }}>{year}</div> : null;
+                const publisherMatch = book.description.match(/(?:издательство|изд\.|publisher[:\s]+|—\s*)([A-ZА-Я][^,.\n]{2,30})/i);
+                const publisher = publisherMatch?.[1]?.trim();
+                const meta = [publisher, year].filter(Boolean).join(", ");
+                return meta ? <div style={{ fontSize: 10, color: "var(--muted)", opacity: 0.55 }}>{meta}</div> : null;
               })()}
             </div>
           </div>
