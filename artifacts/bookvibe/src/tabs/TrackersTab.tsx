@@ -36,95 +36,106 @@ function calcStreak(sessionMap: Record<string, ReadingSession[]>): number {
   return streak;
 }
 
+const COVER_W = 26;
+const COVER_H = 42;
+const STACK_OFFSET = 8;
+
 function DayCell({ day, sessions, isToday }: { day: number; sessions: ReadingSession[]; isToday: boolean }) {
   const hasBooks = sessions.length > 0;
   const totalPagesRead = sessions.reduce((sum, s) => sum + s.pagesRead, 0);
-  const intensity = totalPagesRead > 50 ? "intense" : totalPagesRead > 20 ? "medium" : "light";
-
-  const bgColor = !hasBooks
-    ? isToday ? "color-mix(in srgb, var(--accent), white 75%)" : "rgba(0,0,0,0.04)"
-    : intensity === "intense" ? "color-mix(in srgb, var(--accent), white 30%)"
-    : intensity === "medium" ? "color-mix(in srgb, var(--accent), white 60%)"
-    : "color-mix(in srgb, var(--accent), white 85%)";
-
-  const borderColor = isToday ? "var(--accent)" : hasBooks ? "color-mix(in srgb, var(--accent), white 40%)" : "transparent";
+  const displayed = sessions.slice(0, 3);
+  const extra = sessions.length > 3 ? sessions.length - 3 : 0;
+  const stackWidth = displayed.length > 1
+    ? COVER_W + (displayed.length - 1) * STACK_OFFSET
+    : COVER_W;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 2, minHeight: 72 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 2, minHeight: 104 }}>
       <span style={{
-        fontSize: 11, fontWeight: isToday ? 800 : 500,
+        fontSize: 10, fontWeight: isToday ? 800 : 500,
         color: isToday ? "var(--accent)" : "var(--muted)",
         lineHeight: 1, paddingLeft: 1,
       }}>
         {day}
       </span>
       <div style={{
-        flex: 1, position: "relative", minHeight: 56,
-        background: bgColor,
-        borderRadius: 8,
-        border: `1.5px solid ${borderColor}`,
-        padding: 4,
+        flex: 1,
+        borderRadius: 10,
+        border: `1.5px solid ${isToday ? "var(--accent)" : hasBooks ? "color-mix(in srgb, var(--accent), white 45%)" : "rgba(0,0,0,0.06)"}`,
+        background: hasBooks
+          ? "color-mix(in srgb, var(--accent), white 88%)"
+          : isToday ? "color-mix(in srgb, var(--accent), white 82%)" : "rgba(0,0,0,0.03)",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        gap: 2,
+        padding: "5px 2px",
+        gap: 4,
+        overflow: "hidden",
         transition: "all 0.2s",
       }}>
         {hasBooks ? (
           <>
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2, width: "100%" }}>
-              {sessions.slice(0, 2).map((session, idx) => (
+            <div style={{ position: "relative", width: stackWidth, height: COVER_H, flexShrink: 0 }}>
+              {displayed.map((session, idx) => (
                 <div
                   key={idx}
                   title={session.bookTitle}
                   style={{
-                    width: "100%",
-                    height: idx === 0 ? 24 : 16,
+                    position: "absolute",
+                    left: idx * STACK_OFFSET,
+                    top: 0,
+                    width: COVER_W,
+                    height: COVER_H,
+                    zIndex: idx + 1,
                     borderRadius: 4,
                     overflow: "hidden",
-                    background: "rgba(255,255,255,0.6)",
-                    border: "1px solid rgba(255,255,255,0.8)",
-                    display: "flex",
-                    alignItems: "center",
-                    fontSize: 9,
-                    color: "var(--muted)",
-                    paddingLeft: 4,
+                    border: "1px solid rgba(255,255,255,0.65)",
+                    boxShadow: idx > 0 ? "-2px 0 6px rgba(0,0,0,0.20)" : "0 1px 4px rgba(0,0,0,0.12)",
                   }}
                 >
                   {session.bookCover ? (
-                    <img src={session.bookCover} alt={session.bookTitle}
-                      style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    <img
+                      src={session.bookCover}
+                      alt={session.bookTitle}
+                      style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                    />
                   ) : (
-                    <span>📖</span>
+                    <div style={{
+                      width: "100%", height: "100%",
+                      background: "linear-gradient(135deg, var(--accent), var(--accent-2))",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      fontSize: 12,
+                    }}>
+                      📖
+                    </div>
+                  )}
+                  {idx === 2 && extra > 0 && (
+                    <div style={{
+                      position: "absolute", inset: 0,
+                      background: "rgba(0,0,0,0.50)",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      fontSize: 9, fontWeight: 800, color: "white",
+                    }}>
+                      +{extra}
+                    </div>
                   )}
                 </div>
               ))}
-              {sessions.length > 2 && (
-                <div style={{
-                  width: 20, height: 20, borderRadius: "50%",
-                  background: "var(--accent)", color: "white",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: 9, fontWeight: 800,
-                  boxShadow: "0 2px 4px rgba(0,0,0,0.15)",
-                }}>
-                  +{sessions.length - 2}
-                </div>
-              )}
             </div>
             {totalPagesRead > 0 && (
               <div style={{
                 fontSize: 8, fontWeight: 700,
                 color: "var(--accent)",
                 lineHeight: 1,
-                marginTop: 1,
+                letterSpacing: 0,
               }}>
-                {totalPagesRead} стр.
+                {totalPagesRead}с
               </div>
             )}
           </>
         ) : isToday ? (
-          <span style={{ fontSize: 20 }}>📖</span>
+          <span style={{ fontSize: 18 }}>📖</span>
         ) : null}
       </div>
     </div>
