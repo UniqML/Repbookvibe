@@ -36,7 +36,7 @@ function calcStreak(sessionMap: Record<string, ReadingSession[]>): number {
   return streak;
 }
 
-const COVER_W = 26;
+const COVER_W = 28;
 const COVER_H = 42;
 const STACK_OFFSET = 8;
 
@@ -134,8 +134,6 @@ function DayCell({ day, sessions, isToday }: { day: number; sessions: ReadingSes
               </div>
             )}
           </>
-        ) : isToday ? (
-          <span style={{ fontSize: 18 }}>📖</span>
         ) : null}
       </div>
     </div>
