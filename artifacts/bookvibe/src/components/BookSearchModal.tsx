@@ -199,9 +199,9 @@ export function BookSearchModal({ open, onClose }: BookSearchModalProps) {
                 const isReading = existing?.status === "Читаю";
                 const isFav = existing?.shelf === "Любимые";
                 const isWant = existing && existing.status === "Хочу прочитать" && existing.shelf !== "Любимые";
-                const busyFav = busy === `${result.source}-${result.external_id}-Хочу прочитать-Любимые`;
                 const busyWant = busy === `${result.source}-${result.external_id}-Хочу прочитать-Новые`;
                 const busyRead = busy === `${result.source}-${result.external_id}-Читаю-Новые`;
+                const busyFav = busy === `${result.source}-${result.external_id}-Хочу прочитать-Любимые`;
 
                 return (
                   <div
@@ -236,6 +236,8 @@ export function BookSearchModal({ open, onClose }: BookSearchModalProps) {
                           cursor: busy ? "default" : "pointer",
                           boxShadow: "0 1px 6px rgba(0,0,0,0.2)",
                           padding: 0,
+                          opacity: busyFav ? 0.5 : 1,
+                          transition: "opacity 0.15s",
                         }}
                       >
                         <Heart size={12} fill={isFav ? "currentColor" : "none"} />

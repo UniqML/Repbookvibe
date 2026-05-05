@@ -61,19 +61,23 @@ export function BookCardModal({ book, diaryEntry, onClose }: BookCardModalProps)
   const handleShare = async () => {
     const text = `Я прочитал(а) "${book.title}" ${book.author ? `автора ${book.author}` : ""} ${book.rating ? `(оценка: ${Math.round(book.rating)}/5)` : ""}. BookVibe 📚`;
 
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: book.title, text });
-      } catch (err) {
-        if ((err as Error).name === "AbortError") return;
-      }
-    } else {
+    const copyFallback = async () => {
       try {
         await navigator.clipboard.writeText(text);
         toast({ title: "Скопировано!", description: "Текст скопирован в буфер обмена" });
       } catch {
         toast({ title: "Ошибка", description: "Не удалось скопировать текст", variant: "destructive" });
       }
+    };
+
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: book.title, text });
+      } catch (err) {
+        if ((err as Error).name !== "AbortError") await copyFallback();
+      }
+    } else {
+      await copyFallback();
     }
   };
 
