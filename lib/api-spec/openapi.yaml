@@ -620,6 +620,15 @@ components:
           type: string
         updated_at:
           type: string
+        book_title:
+          type: string
+          nullable: true
+        book_cover:
+          type: string
+          nullable: true
+        book_author:
+          type: string
+          nullable: true
       required:
         - id
         - book_id

@@ -5,6 +5,27 @@ import { SearchBooksQueryParams, SaveBookBody, DeleteBookParams } from "@workspa
 
 const router = Router();
 
+function mapBook(b: typeof booksTable.$inferSelect) {
+  return {
+    id: b.id,
+    user_id: b.userId,
+    external_id: b.externalId,
+    source: b.source,
+    title: b.title,
+    author: b.author,
+    description: b.description,
+    cover: b.cover,
+    pages: b.pages,
+    read_pages: b.readPages,
+    isbn: b.isbn,
+    status: b.status,
+    shelf: b.shelf,
+    vibe: b.vibe,
+    rating: b.rating,
+    created_at: b.createdAt,
+  };
+}
+
 const CHAT_ROOMS = ["detective", "fantasy", "romance", "heartbreak", "academia", "recommendations"];
 
 async function searchGoogleBooks(q: string, limit: number) {
@@ -104,7 +125,7 @@ router.get("/books", async (req: any, res) => {
     ? db.select().from(booksTable).where(eq(booksTable.userId, userId))
     : db.select().from(booksTable).where(eq(booksTable.userId, 0));
   const books = await query.orderBy(desc(booksTable.createdAt));
-  res.json({ items: books });
+  res.json({ items: books.map(mapBook) });
 });
 
 router.post("/books", async (req: any, res) => {
@@ -144,7 +165,7 @@ router.post("/books", async (req: any, res) => {
         })
         .where(eq(booksTable.id, bookId))
         .returning();
-      res.json({ item: updated });
+      res.json({ item: mapBook(updated) });
       return;
     }
   }
@@ -166,7 +187,7 @@ router.post("/books", async (req: any, res) => {
     vibe: (data.vibe || []) as string[],
     rating: data.rating || 0,
   }).returning();
-  res.json({ item: book });
+  res.json({ item: mapBook(book) });
 });
 
 // Reset all reading statistics for the user (keeps books, zeroes progress)

@@ -611,6 +611,9 @@ export function ProfileTab() {
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {(diaryEntries as DiaryEntry[]).map((entry) => {
                 const book = getBookForEntry(entry.book_id);
+                const entryTitle = (entry as any).book_title || book?.title;
+                const entryCover = (entry as any).book_cover || book?.cover;
+                const entryAuthor = (entry as any).book_author || book?.author;
                 const stickers = entry.stickers || [];
                 const hasImages = (entry.images || []).length > 0;
                 const hasMusic = entry.music && Object.keys(entry.music).length > 0;
@@ -645,17 +648,17 @@ export function ProfileTab() {
                   >
                     {/* Cover */}
                     <img
-                      src={book?.cover || "https://images.unsplash.com/photo-1495446815901-a7297e633e8d?auto=format&fit=crop&w=200&q=60"}
-                      alt={book?.title || "Книга"}
+                      src={entryCover || "https://images.unsplash.com/photo-1495446815901-a7297e633e8d?auto=format&fit=crop&w=200&q=60"}
+                      alt={entryTitle || "Книга"}
                       style={{ width: 52, height: 78, objectFit: "cover", borderRadius: 10, flexShrink: 0 }}
                     />
                     {/* Content */}
                     <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 4 }}>
                       <div style={{ fontWeight: 800, color: "var(--ink)", fontSize: 13, lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {book?.title || "Книга"}
+                        {entryTitle || "Книга"}
                       </div>
-                      {book?.author && (
-                        <div style={{ color: "var(--muted)", fontSize: 11 }}>{book.author}</div>
+                      {entryAuthor && (
+                        <div style={{ color: "var(--muted)", fontSize: 11 }}>{entryAuthor}</div>
                       )}
                       {book?.rating ? (
                         <div style={{ color: "#f7c52d", fontSize: 12 }}>

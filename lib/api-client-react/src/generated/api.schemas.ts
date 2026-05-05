@@ -89,6 +89,9 @@ export interface DiaryEntry {
   stickers?: string[];
   created_at?: string;
   updated_at?: string;
+  book_title?: string | null;
+  book_cover?: string | null;
+  book_author?: string | null;
 }
 
 export interface DiaryListResult {

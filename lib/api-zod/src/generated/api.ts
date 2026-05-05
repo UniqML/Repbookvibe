@@ -134,6 +134,9 @@ export const ListDiaryEntriesResponse = zod.object({
       stickers: zod.array(zod.string()).optional(),
       created_at: zod.string().optional(),
       updated_at: zod.string().optional(),
+      book_title: zod.string().nullish(),
+      book_cover: zod.string().nullish(),
+      book_author: zod.string().nullish(),
     }),
   ),
 });
@@ -163,6 +166,9 @@ export const SaveDiaryEntryResponse = zod.object({
     stickers: zod.array(zod.string()).optional(),
     created_at: zod.string().optional(),
     updated_at: zod.string().optional(),
+    book_title: zod.string().nullish(),
+    book_cover: zod.string().nullish(),
+    book_author: zod.string().nullish(),
   }),
 });
 
