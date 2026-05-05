@@ -73,9 +73,6 @@ jobs:
             PORT=22200 BASE_PATH=/ VITE_API_URL=/api NODE_ENV=production pnpm --filter @workspace/bookvibe run build
 
             echo "==> Restart pm2"
-            set -a
-            . ./.env
-            set +a
             export DATABASE_URL JWT_SECRET ADMIN_PASSWORD UNSPLASH_ACCESS_KEY PINTEREST_API_KEY
             export AI_INTEGRATIONS_OPENAI_BASE_URL AI_INTEGRATIONS_OPENAI_API_KEY
             export EMAIL_USER EMAIL_PASSWORD SUPPORT_EMAIL
