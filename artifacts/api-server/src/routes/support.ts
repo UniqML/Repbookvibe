@@ -1,6 +1,15 @@
 import { Router, type Request, type Response } from "express";
 import nodemailer from "nodemailer";
 
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 const router = Router();
 
 const emailTransporter = nodemailer.createTransport({
@@ -37,11 +46,11 @@ router.post("/support", async (req: Request, res: Response) => {
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h2 style="color: #8B7355;">Новое обращение в поддержку BookVibe</h2>
-          <p><strong>От:</strong> ${userEmail ? userEmail : "Не указан"}</p>
-          <p><strong>Тема:</strong> ${subject.trim()}</p>
+          <p><strong>От:</strong> ${userEmail ? escapeHtml(userEmail) : "Не указан"}</p>
+          <p><strong>Тема:</strong> ${escapeHtml(subject.trim())}</p>
           <hr style="border: 1px solid #eee;" />
           <p><strong>Сообщение:</strong></p>
-          <div style="background: #f5e6d3; padding: 16px; border-radius: 8px; white-space: pre-wrap;">${message.trim().slice(0, 2000)}</div>
+          <div style="background: #f5e6d3; padding: 16px; border-radius: 8px; white-space: pre-wrap;">${escapeHtml(message.trim().slice(0, 2000))}</div>
         </div>
       `,
     });
