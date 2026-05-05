@@ -10,6 +10,7 @@ import aiRouter from "./ai";
 import ratingsRouter from "./ratings";
 import adminRouter from "./admin";
 import friendsRouter from "./friends";
+import supportRouter from "./support";
 
 const router: IRouter = Router();
 
@@ -25,5 +26,6 @@ router.use(imagesRouter);
 router.use(aiRouter);
 router.use(ratingsRouter);
 router.use(friendsRouter);
+router.use(supportRouter);
 
 export default router;
