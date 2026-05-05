@@ -21,6 +21,10 @@ const emailTransporter = nodemailer.createTransport({
   },
 });
 
+function isEmailConfigured(): boolean {
+  return Boolean(process.env.EMAIL_USER && process.env.EMAIL_PASSWORD);
+}
+
 function hashPassword(password: string): string {
   return crypto.createHash("sha256").update(password).digest("hex");
 }
@@ -54,9 +58,13 @@ function toAuthUser(user: {
 
 // Send verification email using Nodemailer
 async function sendVerificationEmail(email: string, code: string) {
+  if (!isEmailConfigured()) {
+    throw new Error("Email service is not configured");
+  }
+
   try {
     await emailTransporter.sendMail({
-      from: process.env.EMAIL_USER,
+      from: process.env.SUPPORT_EMAIL || process.env.EMAIL_USER,
       to: email,
       subject: "BookVibe Verification Code",
       html: `
@@ -82,9 +90,15 @@ async function sendVerificationEmail(email: string, code: string) {
 router.post("/auth/register", async (req: AuthRequest, res: Response) => {
   try {
     const { email, password, displayName } = req.body;
+    const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
 
-    if (!email || !password) {
+    if (!normalizedEmail || !password) {
       res.status(400).json({ error: "Email and password required" });
+      return;
+    }
+
+    if (!isEmailConfigured()) {
+      res.status(503).json({ error: "Email service is not configured" });
       return;
     }
 
@@ -92,37 +106,67 @@ router.post("/auth/register", async (req: AuthRequest, res: Response) => {
     const existing = await db
       .select()
       .from(usersTable)
-      .where(eq(usersTable.email, email))
+      .where(eq(usersTable.email, normalizedEmail))
       .limit(1);
 
-    if (existing.length > 0) {
+    const existingUser = existing[0];
+    if (existingUser?.isVerified) {
       res.status(409).json({ error: "Email already registered" });
       return;
     }
 
     const verificationCode = generateVerificationCode();
     const passwordHash = hashPassword(password);
+    const userDisplayName = displayName || normalizedEmail.split("@")[0];
+
+    if (existingUser) {
+      await db
+        .update(usersTable)
+        .set({
+          displayName: userDisplayName,
+          passwordHash,
+          verificationCode,
+          avatarSeed: createAvatarSeed(normalizedEmail),
+        })
+        .where(eq(usersTable.id, existingUser.id));
+
+      await sendVerificationEmail(normalizedEmail, verificationCode);
+
+      res.status(200).json({
+        message: "Verification code sent. Check email for verification code.",
+        userId: existingUser.id,
+      });
+      return;
+    }
 
     const user = await db
       .insert(usersTable)
       .values({
-        email,
-        displayName: displayName || email.split("@")[0],
+        email: normalizedEmail,
+        displayName: userDisplayName,
         passwordHash,
         verificationCode,
         isVerified: false,
-        avatarSeed: createAvatarSeed(email),
+        avatarSeed: createAvatarSeed(normalizedEmail),
       })
       .returning();
 
-    await sendVerificationEmail(email, verificationCode);
+    try {
+      await sendVerificationEmail(normalizedEmail, verificationCode);
+    } catch (error) {
+      if (user[0]) {
+        await db.delete(usersTable).where(eq(usersTable.id, user[0].id));
+      }
+      throw error;
+    }
 
     res.status(201).json({
       message: "User registered. Check email for verification code.",
       userId: user[0]?.id,
     });
   } catch (error) {
-    res.status(500).json({ error: "Registration failed" });
+    console.error("Registration failed:", error);
+    res.status(503).json({ error: "Registration email could not be sent" });
   }
 });
 
@@ -130,8 +174,9 @@ router.post("/auth/register", async (req: AuthRequest, res: Response) => {
 router.post("/auth/verify", async (req: AuthRequest, res: Response) => {
   try {
     const { email, code } = req.body;
+    const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
 
-    if (!email || !code) {
+    if (!normalizedEmail || !code) {
       res.status(400).json({ error: "Email and code required" });
       return;
     }
@@ -139,7 +184,7 @@ router.post("/auth/verify", async (req: AuthRequest, res: Response) => {
     const users = await db
       .select()
       .from(usersTable)
-      .where(eq(usersTable.email, email))
+      .where(eq(usersTable.email, normalizedEmail))
       .limit(1);
 
     if (users.length === 0) {
@@ -178,8 +223,9 @@ router.post("/auth/verify", async (req: AuthRequest, res: Response) => {
 router.post("/auth/login", async (req: AuthRequest, res: Response) => {
   try {
     const { email, password } = req.body;
+    const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
 
-    if (!email || !password) {
+    if (!normalizedEmail || !password) {
       res.status(400).json({ error: "Email and password required" });
       return;
     }
@@ -187,7 +233,7 @@ router.post("/auth/login", async (req: AuthRequest, res: Response) => {
     const users = await db
       .select()
       .from(usersTable)
-      .where(eq(usersTable.email, email))
+      .where(eq(usersTable.email, normalizedEmail))
       .limit(1);
 
     if (users.length === 0) {
@@ -205,6 +251,11 @@ router.post("/auth/login", async (req: AuthRequest, res: Response) => {
 
     if (user.isBanned) {
       res.status(403).json({ error: "Ваш аккаунт заблокирован. Обратитесь к администратору." });
+      return;
+    }
+
+    if (!user.isVerified) {
+      res.status(403).json({ error: "Email is not verified. Enter the code sent to your email." });
       return;
     }
 
@@ -241,15 +292,21 @@ router.post("/auth/guest", (req: AuthRequest, res: Response) => {
 // Forgot password - send reset code
 router.post("/auth/forgot-password", async (req, res) => {
   const { email } = req.body;
-  if (!email) {
+  const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
+  if (!normalizedEmail) {
     res.status(400).json({ error: "Email required" });
+    return;
+  }
+
+  if (!isEmailConfigured()) {
+    res.status(503).json({ error: "Email service is not configured" });
     return;
   }
 
   const user = await db
     .select({ id: usersTable.id, email: usersTable.email })
     .from(usersTable)
-    .where(eq(usersTable.email, email))
+    .where(eq(usersTable.email, normalizedEmail))
     .limit(1);
 
   if (!user.length) {
@@ -265,11 +322,13 @@ router.post("/auth/forgot-password", async (req, res) => {
 
   try {
     await sendVerificationEmail(
-      email,
+      normalizedEmail,
       resetCode
     );
   } catch (error) {
     console.error("Failed to send password reset email:", error);
+    res.status(503).json({ error: "Reset email could not be sent" });
+    return;
   }
 
   res.json({ message: "Reset code sent to email" });
@@ -340,7 +399,8 @@ router.post("/auth/heartbeat", async (req: AuthRequest, res) => {
 // Reset password with code
 router.post("/auth/reset-password", async (req, res) => {
   const { email, code, newPassword } = req.body;
-  if (!email || !code || !newPassword) {
+  const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
+  if (!normalizedEmail || !code || !newPassword) {
     res.status(400).json({ error: "Email, code, and password required" });
     return;
   }
@@ -351,7 +411,7 @@ router.post("/auth/reset-password", async (req, res) => {
       verificationCode: usersTable.verificationCode,
     })
     .from(usersTable)
-    .where(eq(usersTable.email, email))
+    .where(eq(usersTable.email, normalizedEmail))
     .limit(1);
 
   if (!user.length) {
