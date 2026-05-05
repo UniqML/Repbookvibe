@@ -661,7 +661,7 @@ export function ProfileTab() {
             {goal && (
               <div style={{ marginBottom: 12, padding: 12, background: "rgba(0,0,0,0.02)", borderRadius: 12 }}>
                 <p style={{ margin: 0, fontSize: 12, color: "var(--muted)" }}>
-                  {lang === "ru" ? "Текущая цель:" : "Current goal:"} <b style={{ color: "var(--ink)" }}>{goal.targetBooks} книг</b>
+                  {lang === "ru" ? "Текущая цель:" : "Current goal:"} <b style={{ color: "var(--ink)" }}>{goal.targetBooks} {pluralize(goal.targetBooks, "книга", "книги", "книг")}</b>
                 </p>
               </div>
             )}

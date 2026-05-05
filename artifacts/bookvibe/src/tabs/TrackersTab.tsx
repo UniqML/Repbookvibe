@@ -119,7 +119,7 @@ function DayCell({ day, sessions, isToday }: { day: number; sessions: ReadingSes
                 lineHeight: 1,
                 marginTop: 1,
               }}>
-                {totalPagesRead}с
+                {totalPagesRead} стр.
               </div>
             )}
           </>
