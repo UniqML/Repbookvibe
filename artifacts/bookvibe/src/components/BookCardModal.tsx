@@ -1,6 +1,7 @@
 import { X, Printer, Download, Share2, Heart } from "lucide-react";
 import type { Book } from "@workspace/api-client-react";
 import { useRef, useState } from "react";
+import { toast } from "@/hooks/use-toast";
 import { RatingsPanel } from "./RatingsPanel";
 
 interface BookCardModalProps {
@@ -57,22 +58,22 @@ export function BookCardModal({ book, diaryEntry, onClose }: BookCardModalProps)
     }
   };
 
-  const handleShare = () => {
+  const handleShare = async () => {
     const text = `Я прочитал(а) "${book.title}" ${book.author ? `автора ${book.author}` : ""} ${book.rating ? `(оценка: ${Math.round(book.rating)}/5)` : ""}. BookVibe 📚`;
 
     if (navigator.share) {
-      navigator.share({ title: book.title, text });
+      try {
+        await navigator.share({ title: book.title, text });
+      } catch (err) {
+        if ((err as Error).name === "AbortError") return;
+      }
     } else {
-      const options = [
-        { name: "Telegram", url: `https://t.me/share/url?url=bookvibe.app&text=${encodeURIComponent(text)}` },
-        { name: "WhatsApp", url: `https://wa.me/?text=${encodeURIComponent(text)}` },
-        { name: "VK", url: `https://vk.com/share.php?url=bookvibe.app&title=${encodeURIComponent(book.title)}&description=${encodeURIComponent(text)}` },
-      ];
-
-      const shareMenu = options.map(o => `${o.name}`).join("\n");
-      const choice = prompt(`Выберите платформу для шеринга:\n${shareMenu}\n(или отмените)`);
-      const selected = options.find(o => o.name.toLowerCase().includes(choice?.toLowerCase() || ""));
-      if (selected) window.open(selected.url, "_blank");
+      try {
+        await navigator.clipboard.writeText(text);
+        toast({ title: "Скопировано!", description: "Текст скопирован в буфер обмена" });
+      } catch {
+        toast({ title: "Ошибка", description: "Не удалось скопировать текст", variant: "destructive" });
+      }
     }
   };
 

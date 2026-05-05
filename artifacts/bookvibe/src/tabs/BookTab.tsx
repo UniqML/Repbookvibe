@@ -171,14 +171,24 @@ function DiaryModal({
       }}>
         <div style={{
           position: "sticky", top: 0, zIndex: 2, background: "var(--paper)",
-          padding: "16px 20px 12px", display: "flex", alignItems: "center", justifyContent: "space-between",
+          padding: "14px 20px 12px", display: "flex", alignItems: "center", gap: 12, justifyContent: "space-between",
           borderBottom: "1px solid var(--line)",
         }}>
-          <div>
-            <div style={{ fontWeight: 800, fontSize: 17, color: "var(--ink)" }}>Дневник читателя</div>
-            <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>{book.title}</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0, flex: 1 }}>
+            {book.cover && (
+              <img
+                src={book.cover}
+                alt={book.title}
+                style={{ width: 40, height: 60, objectFit: "cover", borderRadius: 8, flexShrink: 0, boxShadow: "0 3px 10px rgba(0,0,0,0.15)" }}
+              />
+            )}
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontWeight: 800, fontSize: 16, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>Дневник читателя</div>
+              <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{book.title}</div>
+              {book.author && <div style={{ fontSize: 11, color: "var(--muted)", opacity: 0.7, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{book.author}</div>}
+            </div>
           </div>
-          <button onClick={onClose} style={{ border: 0, background: "rgba(0,0,0,0.07)", borderRadius: "50%", width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "var(--ink)" }}>
+          <button onClick={onClose} style={{ border: 0, background: "rgba(0,0,0,0.07)", borderRadius: "50%", width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "var(--ink)", flexShrink: 0 }}>
             <X size={16} />
           </button>
         </div>
@@ -679,21 +689,52 @@ export function BookTab() {
             <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
               {searching && <p style={{ color: "var(--muted)", fontSize: 13, margin: 0 }}>Поиск...</p>}
               {!searching && searchResults.length === 0 && <p style={{ color: "var(--muted)", fontSize: 13, margin: 0 }}>Ничего не найдено</p>}
-              {searchResults.map(item => (
-                <button key={`${item.source}-${item.external_id || item.title}`}
-                  onClick={() => handleAddBook(item)}
-                  style={{ border: "1px solid var(--line)", background: "white", borderRadius: 16, padding: 12, display: "grid", gridTemplateColumns: "52px 1fr", gap: 10, textAlign: "left", cursor: "pointer" }}>
-                  <img src={item.cover || "https://images.unsplash.com/photo-1495446815901-a7297e633e8d?auto=format&fit=crop&w=200&q=60"}
-                    alt={item.title}
-                    style={{ width: 52, height: 78, objectFit: "cover", borderRadius: 10 }} />
-                  <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: 4 }}>
-                    <div style={{ fontWeight: 700, color: "var(--ink)", fontSize: 14, lineHeight: 1.2 }}>{item.title}</div>
-                    <div style={{ fontSize: 12, color: "var(--muted)" }}>{item.author || ""}</div>
-                    {item.pages && <div style={{ fontSize: 11, color: "var(--muted)" }}>{item.pages} стр.</div>}
-                    <div style={{ fontSize: 11, color: "var(--accent)", fontWeight: 600, marginTop: 2 }}>Добавить в «Читаю» →</div>
+              {searchResults.map(item => {
+                const existing = books.find(b =>
+                  (item.external_id && b.external_id === item.external_id) ||
+                  b.title.toLowerCase() === item.title.toLowerCase()
+                );
+                const isReading = existing?.status === "Читаю";
+                const isFav = existing?.shelf === "Любимые";
+                const isWant = existing && existing.status === "Хочу прочитать" && existing.shelf !== "Любимые";
+                return (
+                  <div key={`${item.source}-${item.external_id || item.title}`}
+                    style={{ border: existing ? "1px solid color-mix(in srgb, var(--accent), white 70%)" : "1px solid var(--line)", background: existing ? "color-mix(in srgb, var(--accent), white 93%)" : "white", borderRadius: 16, padding: 12, display: "grid", gridTemplateColumns: "52px 1fr", gap: 10 }}>
+                    <img src={item.cover || "https://images.unsplash.com/photo-1495446815901-a7297e633e8d?auto=format&fit=crop&w=200&q=60"}
+                      alt={item.title}
+                      style={{ width: 52, height: 78, objectFit: "cover", borderRadius: 10 }} />
+                    <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: 4 }}>
+                      <div style={{ fontWeight: 700, color: "var(--ink)", fontSize: 14, lineHeight: 1.2 }}>{item.title}</div>
+                      <div style={{ fontSize: 12, color: "var(--muted)" }}>{item.author || ""}</div>
+                      {item.pages && <div style={{ fontSize: 11, color: "var(--muted)" }}>{item.pages} стр.</div>}
+                      {existing && (
+                        <div style={{ fontSize: 11, color: "var(--accent)", fontWeight: 700 }}>
+                          {isReading ? "📖 Читаю" : isFav ? "❤️ В любимых" : "🕐 Прочту позже"}
+                        </div>
+                      )}
+                      <div style={{ display: "flex", gap: 5, marginTop: 2 }}>
+                        <button
+                          onClick={() => saveBook({ data: { title: item.title, author: item.author || "", cover: item.cover || "", pages: item.pages || 0, isbn: item.isbn || "", external_id: item.external_id, source: item.source, description: item.description || "", status: "Хочу прочитать", shelf: "Любимые", vibe: [] } }).then(() => qc.invalidateQueries({ queryKey: getListBooksQueryKey() }))}
+                          title="В любимые"
+                          style={{ border: isFav ? "1.5px solid var(--accent)" : "1px solid var(--line)", borderRadius: 8, padding: "5px 7px", background: isFav ? "color-mix(in srgb, var(--accent), white 80%)" : "transparent", color: isFav ? "var(--accent)" : "var(--muted)", cursor: "pointer", fontSize: 13, display: "flex", alignItems: "center" }}>
+                          <Heart size={12} fill={isFav ? "currentColor" : "none"} />
+                        </button>
+                        <button
+                          onClick={() => saveBook({ data: { title: item.title, author: item.author || "", cover: item.cover || "", pages: item.pages || 0, isbn: item.isbn || "", external_id: item.external_id, source: item.source, description: item.description || "", status: "Хочу прочитать", shelf: "Новые", vibe: [] } }).then(() => qc.invalidateQueries({ queryKey: getListBooksQueryKey() }))}
+                          style={{ border: isWant ? "1.5px solid var(--accent)" : "1px solid var(--line)", borderRadius: 8, padding: "5px 8px", background: isWant ? "color-mix(in srgb, var(--accent), white 80%)" : "transparent", color: isWant ? "var(--accent)" : "var(--muted)", cursor: "pointer", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", gap: 3 }}>
+                          🕐 Позже
+                        </button>
+                        <button
+                          onClick={() => handleAddBook(item)}
+                          style={{ border: 0, borderRadius: 8, padding: "5px 10px", background: isReading ? "var(--accent)" : "color-mix(in srgb, var(--accent), white 15%)", color: "white", cursor: "pointer", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", gap: 4 }}>
+                          <BookOpen size={11} />
+                          {isReading ? "Читаю" : "Читать"}
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                </button>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

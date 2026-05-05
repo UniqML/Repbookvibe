@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useReadingGoal } from "@/hooks/useReadingGoal";
 import { useAchievements } from "@/hooks/useAchievements";
@@ -12,6 +12,61 @@ import { UserAvatar } from "@/components/UserAvatar";
 import { generateAvatarSeeds, getDefaultAvatarSeed } from "@/lib/avatar";
 import { LogOut, Target, Trophy, BookOpen } from "lucide-react";
 import { pluralize } from "@/lib/pluralize";
+
+function GoalPicker({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  const listRef = useRef<HTMLDivElement>(null);
+  const ITEM_H = 48;
+  const VISIBLE = 5;
+  const nums = Array.from({ length: 300 }, (_, i) => i + 1);
+
+  useEffect(() => {
+    if (listRef.current) listRef.current.scrollTop = (value - 1) * ITEM_H;
+  }, []);
+
+  const handleScroll = () => {
+    if (!listRef.current) return;
+    const idx = Math.round(listRef.current.scrollTop / ITEM_H);
+    onChange(Math.min(300, Math.max(1, idx + 1)));
+  };
+
+  return (
+    <div style={{ position: "relative", height: ITEM_H * VISIBLE, overflow: "hidden", borderRadius: 18, background: "rgba(0,0,0,0.04)" }}>
+      <div style={{
+        position: "absolute", top: "50%", left: 0, right: 0, height: ITEM_H,
+        background: "color-mix(in srgb, var(--accent), white 82%)", borderRadius: 12,
+        transform: "translateY(-50%)", zIndex: 0,
+        border: "1.5px solid color-mix(in srgb, var(--accent), white 60%)",
+      }} />
+      <div style={{
+        position: "absolute", top: 0, left: 0, right: 0, height: "35%",
+        background: "linear-gradient(to bottom, var(--paper), transparent)",
+        zIndex: 2, pointerEvents: "none",
+      }} />
+      <div style={{
+        position: "absolute", bottom: 0, left: 0, right: 0, height: "35%",
+        background: "linear-gradient(to top, var(--paper), transparent)",
+        zIndex: 2, pointerEvents: "none",
+      }} />
+      <div ref={listRef} onScroll={handleScroll} style={{
+        height: "100%", overflowY: "scroll", scrollSnapType: "y mandatory",
+        scrollbarWidth: "none", position: "relative", zIndex: 1,
+        paddingTop: ITEM_H * Math.floor(VISIBLE / 2), paddingBottom: ITEM_H * Math.floor(VISIBLE / 2),
+      }}>
+        {nums.map(n => {
+          const sel = n === value;
+          return (
+            <div key={n} onClick={() => { onChange(n); if (listRef.current) listRef.current.scrollTop = (n - 1) * ITEM_H; }}
+              style={{ height: ITEM_H, display: "flex", alignItems: "center", justifyContent: "center", scrollSnapAlign: "center", cursor: "pointer" }}>
+              <span style={{ fontSize: sel ? 22 : 15, fontWeight: sel ? 800 : 400, color: sel ? "var(--accent)" : "var(--muted)", transition: "font-size 0.15s, color 0.15s" }}>
+                {n} {sel ? pluralize(n, "книга", "книги", "книг") : ""}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 export function ProfileTab() {
   const { user, logout, updateProfile } = useAuth();
@@ -32,7 +87,7 @@ export function ProfileTab() {
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [showGoalModal, setShowGoalModal] = useState(false);
-  const [goalInput, setGoalInput] = useState(goal?.targetBooks.toString() || "50");
+  const [goalInput, setGoalInput] = useState(goal?.targetBooks || 50);
   const [showAchievementsModal, setShowAchievementsModal] = useState(false);
 
   const finished = books.filter(b => b.status === "Прочитано");
@@ -95,10 +150,9 @@ export function ProfileTab() {
   };
 
   const handleSetGoal = () => {
-    const num = parseInt(goalInput);
-    if (num > 0) {
+    if (goalInput > 0) {
       const year = new Date().getFullYear();
-      setGoal(num, year);
+      setGoal(goalInput, year);
       setShowGoalModal(false);
     }
   };
@@ -622,45 +676,15 @@ export function ProfileTab() {
             </div>
 
             <div style={{ marginBottom: 16 }}>
-              <label style={{ display: "block", fontSize: 12, color: "var(--muted)", fontWeight: 600, marginBottom: 6 }}>
+              <label style={{ display: "block", fontSize: 12, color: "var(--muted)", fontWeight: 600, marginBottom: 10, textAlign: "center" }}>
                 {lang === "ru" ? "Количество книг на год" : "Books per year"}
               </label>
-              <div style={{ display: "flex", gap: 8 }}>
-                <input
-                  type="number"
-                  value={goalInput}
-                  onChange={(e) => setGoalInput(e.target.value)}
-                  min="1"
-                  max="500"
-                  style={{
-                    flex: 1,
-                    border: "1px solid var(--line)",
-                    borderRadius: 12,
-                    padding: "10px 12px",
-                    fontSize: 14,
-                    color: "var(--ink)",
-                    outline: "none",
-                    fontFamily: "inherit",
-                  }}
-                />
-                <div style={{
-                  background: "var(--paper-soft)",
-                  borderRadius: 12,
-                  padding: "10px 12px",
-                  color: "var(--muted)",
-                  fontSize: 14,
-                  fontWeight: 600,
-                  minWidth: 60,
-                  textAlign: "center",
-                }}>
-                  {lang === "ru" ? "книг" : "books"}
-                </div>
-              </div>
+              <GoalPicker value={goalInput} onChange={setGoalInput} />
             </div>
 
             {goal && (
               <div style={{ marginBottom: 12, padding: 12, background: "rgba(0,0,0,0.02)", borderRadius: 12 }}>
-                <p style={{ margin: 0, fontSize: 12, color: "var(--muted)" }}>
+                <p style={{ margin: 0, fontSize: 12, color: "var(--muted)", textAlign: "center" }}>
                   {lang === "ru" ? "Текущая цель:" : "Current goal:"} <b style={{ color: "var(--ink)" }}>{goal.targetBooks} {pluralize(goal.targetBooks, "книга", "книги", "книг")}</b>
                 </p>
               </div>

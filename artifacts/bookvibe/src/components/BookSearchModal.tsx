@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Search, X, Plus } from "lucide-react";
-import { useSaveBook, getListBooksQueryKey } from "@workspace/api-client-react";
+import { Search, X, Heart, BookOpen, Clock } from "lucide-react";
+import { useSaveBook, useListBooks, getListBooksQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
+import type { Book } from "@workspace/api-client-react";
 
 interface SearchResult {
   external_id: string;
@@ -20,14 +21,22 @@ interface BookSearchModalProps {
   onClose: () => void;
 }
 
+function getBookStatus(books: Book[], result: SearchResult): Book | undefined {
+  return books.find(
+    b => (result.external_id && b.external_id === result.external_id) ||
+         b.title.toLowerCase() === result.title.toLowerCase()
+  );
+}
+
 export function BookSearchModal({ open, onClose }: BookSearchModalProps) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
-  const [selected, setSelected] = useState<string | null>(null);
-  const [status, setStatus] = useState<"Хочу прочитать" | "Читаю" | "Прочитано">("Хочу прочитать");
+  const [busy, setBusy] = useState<string | null>(null);
 
-  const { mutateAsync: saveBook, isPending: saving } = useSaveBook();
+  const { mutateAsync: saveBook } = useSaveBook();
+  const { data: booksData } = useListBooks();
+  const existingBooks: Book[] = booksData?.items || [];
   const qc = useQueryClient();
 
   const handleSearch = async (e: React.FormEvent) => {
@@ -35,14 +44,11 @@ export function BookSearchModal({ open, onClose }: BookSearchModalProps) {
     if (!query.trim()) return;
 
     setLoading(true);
-    setSelected(null);
     try {
       const res = await fetch(
         `/api/books/search?q=${encodeURIComponent(query.trim())}&limit=10`
       );
-      if (!res.ok) {
-        throw new Error(`Search failed: ${res.status} ${res.statusText}`);
-      }
+      if (!res.ok) throw new Error(`Search failed: ${res.status}`);
       const data = await res.json();
       setResults(data.items || []);
     } catch (error) {
@@ -52,7 +58,9 @@ export function BookSearchModal({ open, onClose }: BookSearchModalProps) {
     setLoading(false);
   };
 
-  const handleAddBook = async (result: SearchResult) => {
+  const handleAddBook = async (result: SearchResult, status: "Хочу прочитать" | "Читаю", shelf: string) => {
+    const key = `${result.source}-${result.external_id}-${status}`;
+    setBusy(key);
     try {
       await saveBook({
         data: {
@@ -65,17 +73,16 @@ export function BookSearchModal({ open, onClose }: BookSearchModalProps) {
           pages: result.pages || 0,
           isbn: result.isbn || "",
           status,
-          shelf: "Моя библиотека",
+          shelf,
           vibe: result.genres || [],
           rating: 0,
         },
       });
       qc.invalidateQueries({ queryKey: getListBooksQueryKey() });
-      setResults([]);
-      setQuery("");
-      onClose();
     } catch (error) {
       console.error("Failed to add book:", error);
+    } finally {
+      setBusy(null);
     }
   };
 
@@ -143,12 +150,7 @@ export function BookSearchModal({ open, onClose }: BookSearchModalProps) {
         <div style={{ padding: "0 18px", display: "flex", flexDirection: "column", gap: 12 }}>
           <form
             onSubmit={handleSearch}
-            style={{
-              display: "flex",
-              gap: 8,
-              alignItems: "center",
-              marginBottom: 8,
-            }}
+            style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}
           >
             <div
               style={{
@@ -168,13 +170,9 @@ export function BookSearchModal({ open, onClose }: BookSearchModalProps) {
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Название или автор..."
                 style={{
-                  flex: 1,
-                  border: 0,
-                  outline: 0,
-                  background: "transparent",
-                  color: "var(--ink)",
-                  fontSize: 14,
-                  fontFamily: "inherit",
+                  flex: 1, border: 0, outline: 0,
+                  background: "transparent", color: "var(--ink)",
+                  fontSize: 14, fontFamily: "inherit",
                 }}
               />
             </div>
@@ -182,13 +180,10 @@ export function BookSearchModal({ open, onClose }: BookSearchModalProps) {
               type="submit"
               disabled={loading || !query.trim()}
               style={{
-                border: 0,
-                borderRadius: 12,
-                padding: "10px 16px",
+                border: 0, borderRadius: 12, padding: "10px 16px",
                 background: query.trim() ? "var(--accent)" : "var(--line)",
                 color: query.trim() ? "white" : "var(--muted)",
-                fontWeight: 700,
-                fontSize: 14,
+                fontWeight: 700, fontSize: 14,
                 cursor: query.trim() && !loading ? "pointer" : "default",
                 opacity: loading ? 0.7 : 1,
               }}
@@ -198,126 +193,118 @@ export function BookSearchModal({ open, onClose }: BookSearchModalProps) {
           </form>
 
           {results.length > 0 && (
-            <>
-              <div style={{ display: "flex", gap: 8, padding: "0 4px" }}>
-                <select
-                  value={status}
-                  onChange={(e) => setStatus(e.target.value as any)}
-                  style={{
-                    border: "1px solid var(--line)",
-                    borderRadius: 12,
-                    padding: "8px 12px",
-                    background: "rgba(255,255,255,0.65)",
-                    color: "var(--ink)",
-                    fontSize: 13,
-                    fontFamily: "inherit",
-                    fontWeight: 600,
-                  }}
-                >
-                  <option value="Хочу прочитать">Хочу прочитать</option>
-                  <option value="Читаю">Читаю</option>
-                  <option value="Прочитано">Прочитано</option>
-                </select>
-              </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: "420px", overflowY: "auto" }}>
+              {results.map((result) => {
+                const existing = getBookStatus(existingBooks, result);
+                const isReading = existing?.status === "Читаю";
+                const isFav = existing?.shelf === "Любимые";
+                const isWant = existing && existing.status === "Хочу прочитать" && existing.shelf !== "Любимые";
+                const busyFav = busy === `${result.source}-${result.external_id}-Хочу прочитать-fav`;
+                const busyWant = busy === `${result.source}-${result.external_id}-Хочу прочитать`;
+                const busyRead = busy === `${result.source}-${result.external_id}-Читаю`;
 
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 10,
-                  maxHeight: "400px",
-                  overflowY: "auto",
-                }}
-              >
-                {results.map((result) => (
+                return (
                   <div
                     key={result.external_id}
                     style={{
                       display: "grid",
-                      gridTemplateColumns: "64px 1fr auto",
+                      gridTemplateColumns: "60px 1fr",
                       gap: 12,
                       padding: 12,
-                      background: "rgba(255,255,255,0.55)",
+                      background: existing ? "color-mix(in srgb, var(--accent), white 93%)" : "rgba(255,255,255,0.55)",
                       borderRadius: 16,
-                      border: "1px solid var(--line)",
+                      border: existing ? "1px solid color-mix(in srgb, var(--accent), white 70%)" : "1px solid var(--line)",
                     }}
                   >
                     <img
-                      src={
-                        result.cover ||
-                        "https://images.unsplash.com/photo-1495446815901-a7297e633e8d?auto=format&fit=crop&w=200&q=60"
-                      }
+                      src={result.cover || "https://images.unsplash.com/photo-1495446815901-a7297e633e8d?auto=format&fit=crop&w=200&q=60"}
                       alt={result.title}
-                      style={{
-                        width: "100%",
-                        aspectRatio: "2/3",
-                        objectFit: "cover",
-                        borderRadius: 10,
-                      }}
+                      style={{ width: "100%", aspectRatio: "2/3", objectFit: "cover", borderRadius: 10 }}
                     />
-                    <div>
-                      <div style={{ fontWeight: 700, color: "var(--ink)", fontSize: 13, marginBottom: 4 }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, color: "var(--ink)", fontSize: 13, lineHeight: 1.3 }}>
                         {result.title}
                       </div>
-                      <div style={{ color: "var(--muted)", fontSize: 12, marginBottom: 6 }}>
-                        {result.author}
-                      </div>
-                      {result.description && (
-                        <div
-                          style={{
-                            fontSize: 11,
-                            color: "var(--muted)",
-                            lineHeight: 1.4,
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            display: "-webkit-box",
-                            WebkitLineClamp: 2,
-                          }}
-                        >
-                          {result.description}
+                      <div style={{ color: "var(--muted)", fontSize: 12 }}>{result.author}</div>
+                      {result.pages && (
+                        <div style={{ fontSize: 11, color: "var(--muted)" }}>{result.pages} стр.</div>
+                      )}
+                      {existing && (
+                        <div style={{ fontSize: 11, color: "var(--accent)", fontWeight: 700, marginBottom: 2 }}>
+                          {existing.status === "Читаю" ? "📖 Читаю" : existing.shelf === "Любимые" ? "❤️ В любимых" : "🕐 Прочту позже"}
                         </div>
                       )}
+                      <div style={{ display: "flex", gap: 6, marginTop: 2 }}>
+                        <button
+                          onClick={() => {
+                            const k = `${result.source}-${result.external_id}-Хочу прочитать-fav`;
+                            setBusy(k);
+                            handleAddBook(result, "Хочу прочитать", "Любимые").finally(() => setBusy(null));
+                          }}
+                          disabled={!!busy}
+                          title="В любимые"
+                          style={{
+                            border: isFav ? "1.5px solid var(--accent)" : "1px solid var(--line)",
+                            borderRadius: 10, padding: "6px 8px",
+                            background: isFav ? "color-mix(in srgb, var(--accent), white 80%)" : "transparent",
+                            color: isFav ? "var(--accent)" : "var(--muted)",
+                            cursor: busy ? "default" : "pointer",
+                            display: "flex", alignItems: "center", gap: 4,
+                            fontSize: 11, fontWeight: 700, opacity: busyFav ? 0.6 : 1,
+                            flexShrink: 0,
+                          }}
+                        >
+                          <Heart size={12} fill={isFav ? "currentColor" : "none"} />
+                          {isFav ? "Любимая" : "❤️"}
+                        </button>
+                        <button
+                          onClick={() => handleAddBook(result, "Хочу прочитать", "Новые")}
+                          disabled={!!busy}
+                          title="Прочту позже"
+                          style={{
+                            border: isWant ? "1.5px solid var(--accent)" : "1px solid var(--line)",
+                            borderRadius: 10, padding: "6px 8px",
+                            background: isWant ? "color-mix(in srgb, var(--accent), white 80%)" : "transparent",
+                            color: isWant ? "var(--accent)" : "var(--muted)",
+                            cursor: busy ? "default" : "pointer",
+                            fontSize: 11, fontWeight: 700, opacity: busyWant ? 0.6 : 1,
+                            display: "flex", alignItems: "center", gap: 4,
+                            flexShrink: 0,
+                          }}
+                        >
+                          <Clock size={12} />
+                          Позже
+                        </button>
+                        <button
+                          onClick={() => handleAddBook(result, "Читаю", "Новые")}
+                          disabled={!!busy}
+                          title="Начать читать"
+                          style={{
+                            border: 0, borderRadius: 10, padding: "6px 10px",
+                            background: isReading ? "var(--accent)" : "color-mix(in srgb, var(--accent), white 15%)",
+                            color: "white",
+                            cursor: busy ? "default" : "pointer",
+                            fontSize: 11, fontWeight: 700, opacity: busyRead ? 0.6 : 1,
+                            display: "flex", alignItems: "center", gap: 4,
+                            flexShrink: 0,
+                          }}
+                        >
+                          <BookOpen size={12} />
+                          {isReading ? "Читаю" : "Читать"}
+                        </button>
+                      </div>
                     </div>
-                    <button
-                      onClick={() => handleAddBook(result)}
-                      disabled={saving}
-                      style={{
-                        border: 0,
-                        borderRadius: 12,
-                        padding: "8px 10px",
-                        background: "var(--accent)",
-                        color: "white",
-                        cursor: saving ? "default" : "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        flexShrink: 0,
-                        fontWeight: 700,
-                        opacity: saving ? 0.7 : 1,
-                      }}
-                      title="Добавить в библиотеку"
-                    >
-                      <Plus size={16} />
-                    </button>
                   </div>
-                ))}
-              </div>
-            </>
+                );
+              })}
+            </div>
           )}
 
           {!loading && query && results.length === 0 && (
-            <div
-              style={{
-                textAlign: "center",
-                padding: "40px 20px",
-                color: "var(--muted)",
-              }}
-            >
+            <div style={{ textAlign: "center", padding: "40px 20px", color: "var(--muted)" }}>
               <div style={{ fontSize: 28, marginBottom: 12 }}>📚</div>
               <div style={{ fontSize: 14 }}>Книги не найдены</div>
-              <div style={{ fontSize: 12, marginTop: 6 }}>
-                Попробуйте другой запрос
-              </div>
+              <div style={{ fontSize: 12, marginTop: 6 }}>Попробуйте другой запрос</div>
             </div>
           )}
         </div>
