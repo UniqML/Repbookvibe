@@ -611,16 +611,7 @@ export function BookTab() {
                   <div style={{ fontWeight: 700, color: "var(--ink)", fontSize: 13, marginBottom: 8 }}>Сколько вы прочитали?</div>
                   <PagePicker value={pickerPage ?? readPagesVal} max={pages || 999} onChange={setPickerPage} />
                 </div>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <button onClick={handleSaveSession}
-                    style={{ flex: 1, border: 0, borderRadius: 14, padding: "13px", background: "var(--accent)", color: "white", fontWeight: 800, fontSize: 15, cursor: "pointer" }}>
-                    ✓ Сохранить
-                  </button>
-                  <button onClick={() => setShowSession(false)}
-                    style={{ flex: 1, border: "1px solid var(--line)", borderRadius: 14, padding: "13px", background: "transparent", color: "var(--muted)", fontSize: 13, cursor: "pointer" }}>
-                    Отмена
-                  </button>
-                </div>
+                <div style={{ height: 110 }} />
               </div>
             )}
           </div>
@@ -719,6 +710,44 @@ export function BookTab() {
             setTimeout(() => setSessionSaved(false), 3000);
           }}
         />
+      )}
+
+      {showSession && (
+        <div style={{
+          position: "fixed",
+          bottom: 92,
+          left: "50%",
+          transform: "translateX(-50%)",
+          width: "min(100vw - 36px, 444px)",
+          zIndex: 30,
+          display: "flex",
+          gap: 10,
+          padding: "10px 0",
+          background: "transparent",
+        }}>
+          <button
+            onClick={handleSaveSession}
+            style={{
+              flex: 1, border: 0, borderRadius: 16, padding: "14px",
+              background: "var(--accent)", color: "white",
+              fontWeight: 800, fontSize: 15, cursor: "pointer",
+              boxShadow: "0 4px 18px color-mix(in srgb, var(--accent), transparent 45%)",
+            }}
+          >
+            ✓ Сохранить
+          </button>
+          <button
+            onClick={() => setShowSession(false)}
+            style={{
+              flex: 1, border: "1.5px solid var(--line)", borderRadius: 16, padding: "14px",
+              background: "rgba(255,255,255,0.85)", backdropFilter: "blur(12px)",
+              color: "var(--muted)", fontSize: 13, cursor: "pointer",
+              fontWeight: 700,
+            }}
+          >
+            Отмена
+          </button>
+        </div>
       )}
     </>
   );

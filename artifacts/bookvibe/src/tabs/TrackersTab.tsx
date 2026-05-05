@@ -176,7 +176,7 @@ function CalendarView({ books }: { books: Book[] }) {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
         {[
           { icon: TrendingUp, label: "Страниц", value: totalPages },
-          { icon: BookOpen, label: finished === 1 ? "Книга" : finished >= 2 && finished <= 4 ? "Книги" : "Книг", value: finished },
+          { icon: BookOpen, label: pluralize(finished, "Книга", "Книги", "Книг"), value: finished },
           { icon: Flame, label: `${pluralize(streak, "день", "дня", "дней")} подряд`, value: streak },
         ].map(({ icon: Icon, label, value }) => (
           <div key={label} style={{ border: "1px solid var(--line)", background: "var(--paper-soft)", borderRadius: 18, padding: "12px 10px", display: "grid", gap: 3 }}>
@@ -197,7 +197,7 @@ function CalendarView({ books }: { books: Book[] }) {
               {MONTH_NAMES[viewMonth]} {viewYear}
             </div>
             <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>
-              {readingDaysThisMonth} из {daysInMonth} {pluralize(daysInMonth, "дня", "дней", "дней")} ({readingPercentage}%)
+              {readingDaysThisMonth} из {daysInMonth} {pluralize(daysInMonth, "день", "дня", "дней")} ({readingPercentage}%)
             </div>
           </div>
           <button onClick={nextMonth} style={{ border: 0, background: "transparent", color: "var(--accent)", cursor: "pointer", padding: 4, display: "flex" }}>

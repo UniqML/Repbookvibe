@@ -11,6 +11,7 @@ import { DiaryDetailModal } from "@/components/DiaryDetailModal";
 import { UserAvatar } from "@/components/UserAvatar";
 import { generateAvatarSeeds, getDefaultAvatarSeed } from "@/lib/avatar";
 import { LogOut, Target, Trophy, BookOpen } from "lucide-react";
+import { pluralize } from "@/lib/pluralize";
 
 export function ProfileTab() {
   const { user, logout, updateProfile } = useAuth();
@@ -276,7 +277,7 @@ export function ProfileTab() {
           </div>
           <div style={{ marginBottom: 12 }}>
             <div style={{ fontSize: 24, fontWeight: 800, color: "var(--accent)", marginBottom: 4 }}>
-              {goal.targetBooks} {lang === "ru" ? "книг" : "books"}
+              {goal.targetBooks} {lang === "ru" ? pluralize(goal.targetBooks, "книга", "книги", "книг") : "books"}
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
               <div style={{ flex: 1, height: 8, borderRadius: 999, background: "rgba(0,0,0,0.08)", overflow: "hidden" }}>
@@ -306,7 +307,7 @@ export function ProfileTab() {
                 borderRadius: 10, padding: "8px 10px",
                 fontSize: 12, color: "var(--accent)", fontWeight: 600, textAlign: "center"
               }}>
-                🎯 {lang === "ru" ? "Еще" : "Only"} {goal.targetBooks - finished.length} {lang === "ru" ? "книг до цели!" : "books to go!"}
+                🎯 {lang === "ru" ? "Ещё" : "Only"} {goal.targetBooks - finished.length} {lang === "ru" ? pluralize(goal.targetBooks - finished.length, "книга", "книги", "книг") + " до цели!" : "books to go!"}
               </div>
             )}
             {finished.length >= goal.targetBooks && (
@@ -376,7 +377,7 @@ export function ProfileTab() {
                 {finished.length}
               </div>
               <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>
-                {lang === "ru" ? "Прочитано" : "Completed"} {lang === "ru" ? "книг" : "books"}
+                {lang === "ru" ? `Прочитано ${pluralize(finished.length, "книга", "книги", "книг")}` : "Completed books"}
               </div>
             </div>
             <div>
@@ -384,7 +385,7 @@ export function ProfileTab() {
                 {totalPages}
               </div>
               <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>
-                {lang === "ru" ? "Прочитано" : "Read"} {lang === "ru" ? "страниц" : "pages"}
+                {lang === "ru" ? `Прочитано ${pluralize(totalPages, "страница", "страницы", "страниц")}` : "Pages read"}
               </div>
             </div>
             <div>
@@ -392,7 +393,7 @@ export function ProfileTab() {
                 {diaryCount}
               </div>
               <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>
-                {lang === "ru" ? "записей в дневнике" : "diary entries"}
+                {lang === "ru" ? `${pluralize(diaryCount, "запись", "записи", "записей")} в дневнике` : "Diary entries"}
               </div>
             </div>
             <div>
@@ -400,7 +401,7 @@ export function ProfileTab() {
                 {books.length}
               </div>
               <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>
-                {lang === "ru" ? "в библиотеке" : "in library"}
+                {lang === "ru" ? `${pluralize(books.length, "книга", "книги", "книг")} в библиотеке` : "In library"}
               </div>
             </div>
           </div>
