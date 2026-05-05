@@ -150,8 +150,8 @@ export function ProfileTab() {
     setUpdating(true);
     setAvatarError(false);
     try {
-      setAvatarSeedLocal(seed);
       await updateProfile(undefined, undefined, seed);
+      setAvatarSeedLocal(seed);
       setShowAvatarPicker(false);
     } catch {
       setAvatarError(true);

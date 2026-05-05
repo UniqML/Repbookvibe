@@ -110,16 +110,18 @@ export function SettingsModal({ open, onClose, theme, onThemeChange }: SettingsM
 
   const selectAvatarSeed = async (seed: string) => {
     setAvatarError(false);
-    localStorage.setItem("bookvibe_avatar_seed", seed);
     if (user && !user.isAnonymous) {
       setAvatarSaving(true);
       try {
         await updateProfile(undefined, undefined, seed);
+        localStorage.setItem("bookvibe_avatar_seed", seed);
       } catch {
         setAvatarError(true);
       } finally {
         setAvatarSaving(false);
       }
+    } else {
+      localStorage.setItem("bookvibe_avatar_seed", seed);
     }
   };
 
