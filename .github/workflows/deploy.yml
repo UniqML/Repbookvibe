@@ -12,17 +12,6 @@ jobs:
     steps:
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          JWT_SECRET: ${{ secrets.JWT_SECRET }}
-          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
-          UNSPLASH_ACCESS_KEY: ${{ secrets.UNSPLASH_ACCESS_KEY }}
-          PINTEREST_API_KEY: ${{ secrets.PINTEREST_API_KEY }}
-          AI_INTEGRATIONS_OPENAI_BASE_URL: https://api.openai.com/v1
-          AI_INTEGRATIONS_OPENAI_API_KEY: ${{ secrets.AI_INTEGRATIONS_OPENAI_API_KEY }}
-          EMAIL_USER: ${{ secrets.EMAIL_USER }}
-          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
-          SUPPORT_EMAIL: ${{ secrets.SUPPORT_EMAIL }}
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
@@ -30,6 +19,16 @@ jobs:
           script_stop: true
           envs: DATABASE_URL,JWT_SECRET,ADMIN_PASSWORD,UNSPLASH_ACCESS_KEY,PINTEREST_API_KEY,AI_INTEGRATIONS_OPENAI_BASE_URL,AI_INTEGRATIONS_OPENAI_API_KEY,EMAIL_USER,EMAIL_PASSWORD,SUPPORT_EMAIL
           script: |
+            export DATABASE_URL='${{ secrets.DATABASE_URL }}'
+            export JWT_SECRET='${{ secrets.JWT_SECRET }}'
+            export ADMIN_PASSWORD='${{ secrets.ADMIN_PASSWORD }}'
+            export UNSPLASH_ACCESS_KEY='${{ secrets.UNSPLASH_ACCESS_KEY }}'
+            export PINTEREST_API_KEY='${{ secrets.PINTEREST_API_KEY }}'
+            export AI_INTEGRATIONS_OPENAI_BASE_URL='https://api.openai.com/v1'
+            export AI_INTEGRATIONS_OPENAI_API_KEY='${{ secrets.AI_INTEGRATIONS_OPENAI_API_KEY }}'
+            export EMAIL_USER='${{ secrets.EMAIL_USER }}'
+            export EMAIL_PASSWORD='${{ secrets.EMAIL_PASSWORD }}'
+            export SUPPORT_EMAIL='${{ secrets.SUPPORT_EMAIL }}'
             set -e
 
             cd /opt/bookvibe
