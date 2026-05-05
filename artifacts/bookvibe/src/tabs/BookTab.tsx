@@ -183,9 +183,13 @@ function DiaryModal({
               />
             )}
             <div style={{ minWidth: 0 }}>
-              <div style={{ fontWeight: 800, fontSize: 16, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>Дневник читателя</div>
-              <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{book.title}</div>
-              {book.author && <div style={{ fontSize: 11, color: "var(--muted)", opacity: 0.7, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{book.author}</div>}
+              <div style={{ fontWeight: 800, fontSize: 16, color: "var(--ink)", lineHeight: 1.25 }}>Дневник читателя</div>
+              <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 1, lineHeight: 1.3 }}>{book.title}</div>
+              {book.author && <div style={{ fontSize: 11, color: "var(--muted)", opacity: 0.75 }}>{book.author}</div>}
+              {book.description && (() => {
+                const year = book.description.match(/\b(19|20)\d{2}\b/)?.[0];
+                return year ? <div style={{ fontSize: 10, color: "var(--muted)", opacity: 0.55 }}>{year}</div> : null;
+              })()}
             </div>
           </div>
           <button onClick={onClose} style={{ border: 0, background: "rgba(0,0,0,0.07)", borderRadius: "50%", width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "var(--ink)", flexShrink: 0 }}>
@@ -700,9 +704,27 @@ export function BookTab() {
                 return (
                   <div key={`${item.source}-${item.external_id || item.title}`}
                     style={{ border: existing ? "1px solid color-mix(in srgb, var(--accent), white 70%)" : "1px solid var(--line)", background: existing ? "color-mix(in srgb, var(--accent), white 93%)" : "white", borderRadius: 16, padding: 12, display: "grid", gridTemplateColumns: "52px 1fr", gap: 10 }}>
-                    <img src={item.cover || "https://images.unsplash.com/photo-1495446815901-a7297e633e8d?auto=format&fit=crop&w=200&q=60"}
-                      alt={item.title}
-                      style={{ width: 52, height: 78, objectFit: "cover", borderRadius: 10 }} />
+                    <div style={{ position: "relative" }}>
+                      <img src={item.cover || "https://images.unsplash.com/photo-1495446815901-a7297e633e8d?auto=format&fit=crop&w=200&q=60"}
+                        alt={item.title}
+                        style={{ width: 52, height: 78, objectFit: "cover", borderRadius: 10, display: "block" }} />
+                      <button
+                        onClick={() => saveBook({ data: { title: item.title, author: item.author || "", cover: item.cover || "", pages: item.pages || 0, isbn: item.isbn || "", external_id: item.external_id, source: item.source, description: item.description || "", status: "Хочу прочитать", shelf: "Любимые", vibe: [] } }).then(() => qc.invalidateQueries({ queryKey: getListBooksQueryKey() }))}
+                        title="В любимые"
+                        style={{
+                          position: "absolute", top: 3, right: 3,
+                          width: 20, height: 20, borderRadius: "50%",
+                          border: 0,
+                          background: isFav ? "var(--accent)" : "rgba(255,255,255,0.88)",
+                          color: isFav ? "white" : "var(--accent)",
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          cursor: "pointer", padding: 0,
+                          boxShadow: "0 1px 5px rgba(0,0,0,0.2)",
+                        }}
+                      >
+                        <Heart size={10} fill={isFav ? "currentColor" : "none"} />
+                      </button>
+                    </div>
                     <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: 4 }}>
                       <div style={{ fontWeight: 700, color: "var(--ink)", fontSize: 14, lineHeight: 1.2 }}>{item.title}</div>
                       <div style={{ fontSize: 12, color: "var(--muted)" }}>{item.author || ""}</div>

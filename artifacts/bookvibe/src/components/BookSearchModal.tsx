@@ -59,7 +59,7 @@ export function BookSearchModal({ open, onClose }: BookSearchModalProps) {
   };
 
   const handleAddBook = async (result: SearchResult, status: "Хочу прочитать" | "Читаю", shelf: string) => {
-    const key = `${result.source}-${result.external_id}-${status}`;
+    const key = `${result.source}-${result.external_id}-${status}-${shelf}`;
     setBusy(key);
     try {
       await saveBook({
@@ -199,9 +199,9 @@ export function BookSearchModal({ open, onClose }: BookSearchModalProps) {
                 const isReading = existing?.status === "Читаю";
                 const isFav = existing?.shelf === "Любимые";
                 const isWant = existing && existing.status === "Хочу прочитать" && existing.shelf !== "Любимые";
-                const busyFav = busy === `${result.source}-${result.external_id}-Хочу прочитать-fav`;
-                const busyWant = busy === `${result.source}-${result.external_id}-Хочу прочитать`;
-                const busyRead = busy === `${result.source}-${result.external_id}-Читаю`;
+                const busyFav = busy === `${result.source}-${result.external_id}-Хочу прочитать-Любимые`;
+                const busyWant = busy === `${result.source}-${result.external_id}-Хочу прочитать-Новые`;
+                const busyRead = busy === `${result.source}-${result.external_id}-Читаю-Новые`;
 
                 return (
                   <div
@@ -216,11 +216,31 @@ export function BookSearchModal({ open, onClose }: BookSearchModalProps) {
                       border: existing ? "1px solid color-mix(in srgb, var(--accent), white 70%)" : "1px solid var(--line)",
                     }}
                   >
-                    <img
-                      src={result.cover || "https://images.unsplash.com/photo-1495446815901-a7297e633e8d?auto=format&fit=crop&w=200&q=60"}
-                      alt={result.title}
-                      style={{ width: "100%", aspectRatio: "2/3", objectFit: "cover", borderRadius: 10 }}
-                    />
+                    <div style={{ position: "relative" }}>
+                      <img
+                        src={result.cover || "https://images.unsplash.com/photo-1495446815901-a7297e633e8d?auto=format&fit=crop&w=200&q=60"}
+                        alt={result.title}
+                        style={{ width: "100%", aspectRatio: "2/3", objectFit: "cover", borderRadius: 10, display: "block" }}
+                      />
+                      <button
+                        onClick={() => handleAddBook(result, "Хочу прочитать", "Любимые")}
+                        disabled={!!busy}
+                        title="В любимые"
+                        style={{
+                          position: "absolute", top: 4, right: 4,
+                          width: 24, height: 24, borderRadius: "50%",
+                          border: 0,
+                          background: isFav ? "var(--accent)" : "rgba(255,255,255,0.85)",
+                          color: isFav ? "white" : "var(--accent)",
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          cursor: busy ? "default" : "pointer",
+                          boxShadow: "0 1px 6px rgba(0,0,0,0.2)",
+                          padding: 0,
+                        }}
+                      >
+                        <Heart size={12} fill={isFav ? "currentColor" : "none"} />
+                      </button>
+                    </div>
                     <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
                       <div style={{ fontWeight: 700, color: "var(--ink)", fontSize: 13, lineHeight: 1.3 }}>
                         {result.title}
@@ -236,34 +256,12 @@ export function BookSearchModal({ open, onClose }: BookSearchModalProps) {
                       )}
                       <div style={{ display: "flex", gap: 6, marginTop: 2 }}>
                         <button
-                          onClick={() => {
-                            const k = `${result.source}-${result.external_id}-Хочу прочитать-fav`;
-                            setBusy(k);
-                            handleAddBook(result, "Хочу прочитать", "Любимые").finally(() => setBusy(null));
-                          }}
-                          disabled={!!busy}
-                          title="В любимые"
-                          style={{
-                            border: isFav ? "1.5px solid var(--accent)" : "1px solid var(--line)",
-                            borderRadius: 10, padding: "6px 8px",
-                            background: isFav ? "color-mix(in srgb, var(--accent), white 80%)" : "transparent",
-                            color: isFav ? "var(--accent)" : "var(--muted)",
-                            cursor: busy ? "default" : "pointer",
-                            display: "flex", alignItems: "center", gap: 4,
-                            fontSize: 11, fontWeight: 700, opacity: busyFav ? 0.6 : 1,
-                            flexShrink: 0,
-                          }}
-                        >
-                          <Heart size={12} fill={isFav ? "currentColor" : "none"} />
-                          {isFav ? "Любимая" : "❤️"}
-                        </button>
-                        <button
                           onClick={() => handleAddBook(result, "Хочу прочитать", "Новые")}
                           disabled={!!busy}
                           title="Прочту позже"
                           style={{
                             border: isWant ? "1.5px solid var(--accent)" : "1px solid var(--line)",
-                            borderRadius: 10, padding: "6px 8px",
+                            borderRadius: 10, padding: "6px 10px",
                             background: isWant ? "color-mix(in srgb, var(--accent), white 80%)" : "transparent",
                             color: isWant ? "var(--accent)" : "var(--muted)",
                             cursor: busy ? "default" : "pointer",
@@ -280,7 +278,7 @@ export function BookSearchModal({ open, onClose }: BookSearchModalProps) {
                           disabled={!!busy}
                           title="Начать читать"
                           style={{
-                            border: 0, borderRadius: 10, padding: "6px 10px",
+                            border: 0, borderRadius: 10, padding: "6px 12px",
                             background: isReading ? "var(--accent)" : "color-mix(in srgb, var(--accent), white 15%)",
                             color: "white",
                             cursor: busy ? "default" : "pointer",

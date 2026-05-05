@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { X, Music, Image as ImageIcon, MessageSquare, FileText, Tag, Star, Share2, Download } from "lucide-react";
 import type { Book, DiaryEntry } from "@workspace/api-client-react";
+import { toast } from "@/hooks/use-toast";
 
 interface DiaryDetailModalProps {
   entry: DiaryEntry;
@@ -394,13 +395,13 @@ export function DiaryDetailModal({ entry, book, onClose }: DiaryDetailModalProps
       if (navigator.share && navigator.canShare?.({ files: [file] })) {
         await navigator.share({ title, files: [file] });
       } else {
-        // Fallback: download the image
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `bookvibe_${title}.png`;
-        a.click();
-        URL.revokeObjectURL(url);
+        const shareText = `${title}${book?.author ? ` — ${book.author}` : ""}${book?.rating ? ` (${Math.round(book.rating)}/5 ★)` : ""} #BookVibe`;
+        try {
+          await navigator.clipboard.writeText(shareText);
+          toast({ title: "Скопировано!", description: "Текст записи скопирован в буфер обмена" });
+        } catch {
+          toast({ title: "Ошибка", description: "Не удалось скопировать текст", variant: "destructive" });
+        }
       }
     } catch (err) {
       if ((err as Error).name !== "AbortError") console.error("Share error:", err);
