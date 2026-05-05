@@ -1,6 +1,6 @@
 import { Router, type Request, type Response } from "express";
 import { db, usersTable, friendshipsTable, booksTable } from "@workspace/db";
-import { eq, and, or, ilike } from "drizzle-orm";
+import { eq, and, or, ilike, inArray } from "drizzle-orm";
 
 const router = Router();
 
@@ -122,9 +122,10 @@ router.get("/friends", async (req: AuthRequest, res: Response) => {
           statusText: usersTable.statusText,
           lastSeenAt: usersTable.lastSeenAt,
         })
-        .from(usersTable);
+        .from(usersTable)
+        .where(inArray(usersTable.id, uniqueIds));
       for (const u of users) {
-        if (uniqueIds.includes(u.id)) userMap[u.id] = u;
+        userMap[u.id] = u;
       }
     }
 

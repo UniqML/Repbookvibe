@@ -293,7 +293,7 @@ router.post("/auth/profile", async (req: AuthRequest, res) => {
   if (displayName) updates.displayName = displayName;
   if (avatarUrl !== undefined) updates.avatarUrl = avatarUrl;
   if (avatarSeed !== undefined) updates.avatarSeed = avatarSeed;
-  if (statusText !== undefined) updates.statusText = statusText;
+  if (statusText !== undefined) updates.statusText = statusText.slice(0, 100);
 
   if (Object.keys(updates).length === 0) {
     res.status(400).json({ error: "Nothing to update" });
