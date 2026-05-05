@@ -51,6 +51,8 @@ export function SettingsModal({ open, onClose, theme, onThemeChange }: SettingsM
   const [supportMessage, setSupportMessage] = useState("");
   const [contactsOpen, setContactsOpen] = useState<ContactsStep>("idle");
   const [legalDoc, setLegalDoc] = useState<LegalDoc>(null);
+  const [avatarSaving, setAvatarSaving] = useState(false);
+  const [avatarError, setAvatarError] = useState(false);
 
   if (!open) return null;
 
@@ -107,9 +109,17 @@ export function SettingsModal({ open, onClose, theme, onThemeChange }: SettingsM
   const avatarSeeds = generateAvatarSeeds(user?.email || displayName);
 
   const selectAvatarSeed = async (seed: string) => {
+    setAvatarError(false);
     localStorage.setItem("bookvibe_avatar_seed", seed);
     if (user && !user.isAnonymous) {
-      await updateProfile(undefined, undefined, seed);
+      setAvatarSaving(true);
+      try {
+        await updateProfile(undefined, undefined, seed);
+      } catch {
+        setAvatarError(true);
+      } finally {
+        setAvatarSaving(false);
+      }
     }
   };
 
@@ -229,10 +239,12 @@ export function SettingsModal({ open, onClose, theme, onThemeChange }: SettingsM
                 <UserAvatar seed={avatarSeed} name={displayName} email={user?.email} id={user?.id} size={40} radius={12} />
                 <div>
                   <div style={{ color: "var(--ink)", fontSize: 14, fontWeight: 800 }}>Сменить аватарку</div>
-                  <div style={{ color: "var(--muted)", fontSize: 12 }}>12 вариантов DiceBear по вашему email</div>
+                  <div style={{ color: "var(--muted)", fontSize: 12 }}>
+                    {avatarSaving ? "Сохраняю..." : "12 вариантов DiceBear по вашему email"}
+                  </div>
                 </div>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, opacity: avatarSaving ? 0.6 : 1, pointerEvents: avatarSaving ? "none" : "auto" }}>
                 {avatarSeeds.map((seed) => (
                   <button
                     key={seed}
@@ -252,6 +264,11 @@ export function SettingsModal({ open, onClose, theme, onThemeChange }: SettingsM
                   </button>
                 ))}
               </div>
+              {avatarError && (
+                <div style={{ marginTop: 8, fontSize: 12, color: "#e05252", display: "flex", alignItems: "center", gap: 6 }}>
+                  <span>⚠</span> Не удалось сохранить аватарку. Попробуйте ещё раз.
+                </div>
+              )}
             </div>
           )}
 

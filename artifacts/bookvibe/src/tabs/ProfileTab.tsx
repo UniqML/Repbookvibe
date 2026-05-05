@@ -93,6 +93,8 @@ export function ProfileTab() {
   const [showFriendsModal, setShowFriendsModal] = useState(false);
   const [editingStatus, setEditingStatus] = useState(false);
   const [statusInput, setStatusInput] = useState(user?.statusText || "");
+  const [statusError, setStatusError] = useState(false);
+  const [avatarError, setAvatarError] = useState(false);
 
   const finished = books.filter(b => b.status === "Прочитано");
   const totalPages = books.reduce((acc, b) => acc + (b.read_pages || 0), 0);
@@ -133,21 +135,26 @@ export function ProfileTab() {
 
   const handleStatusSave = async () => {
     setUpdating(true);
+    setStatusError(false);
     try {
       await updateProfile(undefined, undefined, undefined, statusInput.slice(0, 100));
       setEditingStatus(false);
-    } catch { /* ignore */ }
-    setUpdating(false);
+    } catch {
+      setStatusError(true);
+    } finally {
+      setUpdating(false);
+    }
   };
 
   const handleAvatarSelect = async (seed: string) => {
     setUpdating(true);
+    setAvatarError(false);
     try {
       setAvatarSeedLocal(seed);
       await updateProfile(undefined, undefined, seed);
       setShowAvatarPicker(false);
-    } catch (error) {
-      console.error("Failed to update avatar:", error);
+    } catch {
+      setAvatarError(true);
     } finally {
       setUpdating(false);
     }
@@ -266,32 +273,39 @@ export function ProfileTab() {
                   {user?.email || "Аккаунт"}
                 </p>
                 {editingStatus ? (
-                  <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
-                    <input
-                      value={statusInput}
-                      onChange={e => setStatusInput(e.target.value)}
-                      maxLength={100}
-                      autoFocus
-                      placeholder="Ваш статус..."
-                      style={{
-                        flex: 1, border: "1px solid var(--accent)", borderRadius: 10,
-                        padding: "6px 10px", fontSize: 12, color: "var(--ink)",
-                        outline: "none", fontFamily: "inherit",
-                      }}
-                    />
-                    <button
-                      onClick={handleStatusSave}
-                      disabled={updating}
-                      style={{ border: 0, borderRadius: 10, padding: "6px 10px", background: "var(--accent)", color: "white", fontWeight: 700, fontSize: 12, cursor: "pointer" }}
-                    >
-                      ✓
-                    </button>
-                    <button
-                      onClick={() => setEditingStatus(false)}
-                      style={{ border: "1px solid var(--line)", borderRadius: 10, padding: "6px 10px", background: "transparent", color: "var(--muted)", fontSize: 12, cursor: "pointer" }}
-                    >
-                      ✕
-                    </button>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 6 }}>
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <input
+                        value={statusInput}
+                        onChange={e => { setStatusInput(e.target.value); setStatusError(false); }}
+                        maxLength={100}
+                        autoFocus
+                        placeholder="Ваш статус..."
+                        style={{
+                          flex: 1, border: `1px solid ${statusError ? "#e05252" : "var(--accent)"}`, borderRadius: 10,
+                          padding: "6px 10px", fontSize: 12, color: "var(--ink)",
+                          outline: "none", fontFamily: "inherit",
+                        }}
+                      />
+                      <button
+                        onClick={handleStatusSave}
+                        disabled={updating}
+                        style={{ border: 0, borderRadius: 10, padding: "6px 10px", background: "var(--accent)", color: "white", fontWeight: 700, fontSize: 12, cursor: updating ? "default" : "pointer", opacity: updating ? 0.6 : 1 }}
+                      >
+                        {updating ? "…" : "✓"}
+                      </button>
+                      <button
+                        onClick={() => { setEditingStatus(false); setStatusError(false); }}
+                        style={{ border: "1px solid var(--line)", borderRadius: 10, padding: "6px 10px", background: "transparent", color: "var(--muted)", fontSize: 12, cursor: "pointer" }}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                    {statusError && (
+                      <div style={{ fontSize: 11, color: "#e05252" }}>
+                        ⚠ Не удалось сохранить. Проверьте соединение и попробуйте снова.
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 4 }}>
@@ -333,42 +347,46 @@ export function ProfileTab() {
 
             {showAvatarPicker && (
               <div style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(4, 1fr)",
-                gap: 8,
                 padding: 12,
                 background: "rgba(0, 0, 0, 0.03)",
                 borderRadius: 16,
                 marginBottom: 12,
               }}>
                 <div style={{
-                  gridColumn: "1 / -1",
                   fontSize: 12,
                   color: "var(--muted)",
                   fontWeight: 700,
                   padding: "0 2px 4px",
+                  marginBottom: 8,
                 }}>
-                  Сменить аватарку
+                  {updating ? "Сохраняю..." : "Сменить аватарку"}
                 </div>
-                {avatarOptions.map((seed) => (
-                  <button
-                    key={seed}
-                    onClick={() => handleAvatarSelect(seed)}
-                    disabled={updating}
-                    style={{
-                      border: avatarSeed === seed ? "2px solid var(--accent)" : "1px solid var(--line)",
-                      borderRadius: 12,
-                      padding: 4,
-                      background: "rgba(255,255,255,0.65)",
-                      cursor: updating ? "default" : "pointer",
-                      transition: "all 0.15s",
-                      display: "flex",
-                      justifyContent: "center",
-                    }}
-                  >
-                    <UserAvatar seed={seed} size={48} radius={10} />
-                  </button>
-                ))}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, opacity: updating ? 0.6 : 1, pointerEvents: updating ? "none" : "auto" }}>
+                  {avatarOptions.map((seed) => (
+                    <button
+                      key={seed}
+                      onClick={() => handleAvatarSelect(seed)}
+                      disabled={updating}
+                      style={{
+                        border: avatarSeed === seed ? "2px solid var(--accent)" : "1px solid var(--line)",
+                        borderRadius: 12,
+                        padding: 4,
+                        background: "rgba(255,255,255,0.65)",
+                        cursor: updating ? "default" : "pointer",
+                        transition: "all 0.15s",
+                        display: "flex",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <UserAvatar seed={seed} size={48} radius={10} />
+                    </button>
+                  ))}
+                </div>
+                {avatarError && (
+                  <div style={{ marginTop: 8, fontSize: 11, color: "#e05252" }}>
+                    ⚠ Не удалось сохранить аватарку. Попробуйте ещё раз.
+                  </div>
+                )}
               </div>
             )}
           </div>
