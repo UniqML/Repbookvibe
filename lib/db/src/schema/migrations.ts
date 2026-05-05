@@ -90,6 +90,27 @@ export async function runMigrations() {
       );
     `);
 
+    await db.execute(sql`
+      ALTER TABLE users
+      ADD COLUMN IF NOT EXISTS status_text TEXT;
+    `);
+
+    await db.execute(sql`
+      ALTER TABLE users
+      ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMP WITH TIME ZONE;
+    `);
+
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS friendships (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        friend_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        status TEXT NOT NULL DEFAULT 'pending',
+        created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+        UNIQUE(user_id, friend_id)
+      );
+    `);
+
     console.log("✓ Migrations completed");
   } catch (error) {
     console.error("Migration error:", error);

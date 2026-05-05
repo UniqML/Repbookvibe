@@ -6,6 +6,7 @@ export type User = {
   email: string | null;
   avatarUrl?: string | null;
   avatarSeed?: string | null;
+  statusText?: string | null;
   isAnonymous: boolean;
 };
 
@@ -16,7 +17,8 @@ interface AuthContextValue {
   register: (email: string, password: string, displayName: string) => Promise<{ userId: number }>;
   verifyCode: (email: string, code: string) => Promise<void>;
   loginEmail: (email: string, password: string) => Promise<void>;
-  updateProfile: (displayName?: string, avatarUrl?: string, avatarSeed?: string) => Promise<void>;
+  updateProfile: (displayName?: string, avatarUrl?: string, avatarSeed?: string, statusText?: string) => Promise<void>;
+  heartbeat: () => Promise<void>;
   logout: () => void;
 }
 
@@ -28,6 +30,7 @@ export const AuthContext = createContext<AuthContextValue>({
   verifyCode: async () => {},
   loginEmail: async () => {},
   updateProfile: async () => {},
+  heartbeat: async () => {},
   logout: () => {},
 });
 
@@ -50,6 +53,20 @@ export function useAuthState() {
   const [token, setToken] = useState<string | null>(() => {
     return localStorage.getItem('bookvibe_token');
   });
+
+  useEffect(() => {
+    const t = localStorage.getItem('bookvibe_token');
+    if (!t) return;
+    const send = () => {
+      fetch(`${API_URL}/auth/heartbeat`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${t}` },
+      }).catch(() => {});
+    };
+    send();
+    const id = setInterval(send, 30_000);
+    return () => clearInterval(id);
+  }, [token]);
 
   const saveAuth = useCallback((newUser: User | null, newToken: string | null) => {
     setUser(newUser);
@@ -106,7 +123,7 @@ export function useAuthState() {
     saveAuth(data.user, data.token);
   }, [saveAuth]);
 
-  const updateProfile = useCallback(async (displayName?: string, avatarUrl?: string, avatarSeed?: string) => {
+  const updateProfile = useCallback(async (displayName?: string, avatarUrl?: string, avatarSeed?: string, statusText?: string) => {
     const res = await fetch(`${API_URL}/auth/profile`, {
       method: 'POST',
       headers: {
@@ -117,6 +134,7 @@ export function useAuthState() {
         ...(displayName && { displayName }),
         ...(avatarUrl !== undefined && { avatarUrl }),
         ...(avatarSeed !== undefined && { avatarSeed }),
+        ...(statusText !== undefined && { statusText }),
       }),
     });
     const data = await res.json();
@@ -124,9 +142,19 @@ export function useAuthState() {
     saveAuth(data.user, token);
   }, [token, saveAuth]);
 
+  const heartbeat = useCallback(async () => {
+    if (!token) return;
+    try {
+      await fetch(`${API_URL}/auth/heartbeat`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+    } catch { /* silent */ }
+  }, [token]);
+
   const logout = useCallback(() => {
     saveAuth(null, null);
   }, [saveAuth]);
 
-  return { user, token, loginGuest, register, verifyCode, loginEmail, updateProfile, logout };
+  return { user, token, loginGuest, register, verifyCode, loginEmail, updateProfile, heartbeat, logout };
 }

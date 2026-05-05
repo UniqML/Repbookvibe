@@ -9,6 +9,7 @@ import imagesRouter from "./images";
 import aiRouter from "./ai";
 import ratingsRouter from "./ratings";
 import adminRouter from "./admin";
+import friendsRouter from "./friends";
 
 const router: IRouter = Router();
 
@@ -23,5 +24,6 @@ router.use(musicRouter);
 router.use(imagesRouter);
 router.use(aiRouter);
 router.use(ratingsRouter);
+router.use(friendsRouter);
 
 export default router;

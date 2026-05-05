@@ -12,6 +12,8 @@ export const usersTable = pgTable("users", {
   isBanned: boolean("is_banned").notNull().default(false),
   avatarUrl: text("avatar_url"),
   avatarSeed: text("avatar_seed"),
+  statusText: text("status_text"),
+  lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

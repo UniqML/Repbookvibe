@@ -12,6 +12,7 @@ import type { User } from "@/hooks/useAuth";
 import { AuthForm } from "@/components/AuthForm";
 import { useLanguage } from "@/hooks/useLanguage";
 import { UserAvatar } from "@/components/UserAvatar";
+import { UserMiniProfile } from "@/components/UserMiniProfile";
 
 interface ChatsTabProps {
   user: User | null;
@@ -80,6 +81,7 @@ export function ChatsTab({ user }: ChatsTabProps) {
   const qc = useQueryClient();
   const bottomRef = useRef<HTMLDivElement>(null);
   const [reportedMsgId, setReportedMsgId] = useState<number | null>(null);
+  const [miniProfileAuthor, setMiniProfileAuthor] = useState<string | null>(null);
 
   const { data: roomsData, isLoading: roomsLoading } = useListChatRooms();
   const rooms = roomsData?.items || [];
@@ -166,7 +168,12 @@ export function ChatsTab({ user }: ChatsTabProps) {
                 <div style={{ display: "flex", flexDirection: "column", alignItems: isMe ? "flex-end" : "flex-start", maxWidth: "80%" }}>
                   {!isMe && (
                     <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
-                      <span style={{ fontSize: 11, color: "var(--accent)", fontWeight: 700 }}>{msg.author}</span>
+                      <button
+                        onClick={() => setMiniProfileAuthor(msg.author)}
+                        style={{ border: 0, background: "transparent", padding: 0, cursor: "pointer", fontSize: 11, color: "var(--accent)", fontWeight: 700 }}
+                      >
+                        {msg.author}
+                      </button>
                     </div>
                   )}
                   <div style={{
@@ -244,6 +251,10 @@ export function ChatsTab({ user }: ChatsTabProps) {
   }
 
   return (
+    <>
+    {miniProfileAuthor && (
+      <UserMiniProfile authorName={miniProfileAuthor} onClose={() => setMiniProfileAuthor(null)} />
+    )}
     <div style={{ padding: "14px 18px 28px", display: "flex", flexDirection: "column", gap: 12 }}>
       <h3 style={{ color: "var(--ink)", margin: "0 0 4px", fontWeight: 700 }}>{t("genreChats")}</h3>
       {roomsLoading && <p style={{ color: "var(--muted)", fontSize: 13 }}>{t("loading")}</p>}
@@ -289,5 +300,6 @@ export function ChatsTab({ user }: ChatsTabProps) {
         );
       })}
     </div>
+    </>
   );
 }

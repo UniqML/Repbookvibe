@@ -8,9 +8,10 @@ import type { Book, DiaryEntry } from "@workspace/api-client-react";
 import { useLanguage } from "@/hooks/useLanguage";
 import { BookCardModal } from "@/components/BookCardModal";
 import { DiaryDetailModal } from "@/components/DiaryDetailModal";
+import { FriendsModal } from "@/components/FriendsModal";
 import { UserAvatar } from "@/components/UserAvatar";
 import { generateAvatarSeeds, getDefaultAvatarSeed } from "@/lib/avatar";
-import { LogOut, Target, Trophy, BookOpen } from "lucide-react";
+import { LogOut, Target, Trophy, BookOpen, Users, Pencil } from "lucide-react";
 import { pluralize } from "@/lib/pluralize";
 
 function GoalPicker({ value, onChange }: { value: number; onChange: (v: number) => void }) {
@@ -89,6 +90,9 @@ export function ProfileTab() {
   const [showGoalModal, setShowGoalModal] = useState(false);
   const [goalInput, setGoalInput] = useState(goal?.targetBooks || 50);
   const [showAchievementsModal, setShowAchievementsModal] = useState(false);
+  const [showFriendsModal, setShowFriendsModal] = useState(false);
+  const [editingStatus, setEditingStatus] = useState(false);
+  const [statusInput, setStatusInput] = useState(user?.statusText || "");
 
   const finished = books.filter(b => b.status === "Прочитано");
   const totalPages = books.reduce((acc, b) => acc + (b.read_pages || 0), 0);
@@ -125,6 +129,15 @@ export function ProfileTab() {
       }
       setUpdating(false);
     }
+  };
+
+  const handleStatusSave = async () => {
+    setUpdating(true);
+    try {
+      await updateProfile(undefined, undefined, undefined, statusInput.slice(0, 100));
+      setEditingStatus(false);
+    } catch { /* ignore */ }
+    setUpdating(false);
   };
 
   const handleAvatarSelect = async (seed: string) => {
@@ -172,6 +185,7 @@ export function ProfileTab() {
   );
 
   return (
+    <>
     <div style={{ padding: "14px 18px 28px", display: "flex", flexDirection: "column", gap: 14 }}>
 
       {!isGuest ? (
@@ -251,6 +265,48 @@ export function ProfileTab() {
                 <p style={{ color: "var(--muted)", margin: "4px 0 0", fontSize: 13 }}>
                   {user?.email || "Аккаунт"}
                 </p>
+                {editingStatus ? (
+                  <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
+                    <input
+                      value={statusInput}
+                      onChange={e => setStatusInput(e.target.value)}
+                      maxLength={100}
+                      autoFocus
+                      placeholder="Ваш статус..."
+                      style={{
+                        flex: 1, border: "1px solid var(--accent)", borderRadius: 10,
+                        padding: "6px 10px", fontSize: 12, color: "var(--ink)",
+                        outline: "none", fontFamily: "inherit",
+                      }}
+                    />
+                    <button
+                      onClick={handleStatusSave}
+                      disabled={updating}
+                      style={{ border: 0, borderRadius: 10, padding: "6px 10px", background: "var(--accent)", color: "white", fontWeight: 700, fontSize: 12, cursor: "pointer" }}
+                    >
+                      ✓
+                    </button>
+                    <button
+                      onClick={() => setEditingStatus(false)}
+                      style={{ border: "1px solid var(--line)", borderRadius: 10, padding: "6px 10px", background: "transparent", color: "var(--muted)", fontSize: 12, cursor: "pointer" }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 4 }}>
+                    <span style={{ fontSize: 12, color: "var(--muted)", fontStyle: user?.statusText ? "italic" : "normal" }}>
+                      {user?.statusText || "Добавить статус..."}
+                    </span>
+                    <button
+                      onClick={() => { setStatusInput(user?.statusText || ""); setEditingStatus(true); }}
+                      style={{ border: 0, background: "transparent", padding: 2, cursor: "pointer", color: "var(--muted)", display: "flex" }}
+                      title="Редактировать статус"
+                    >
+                      <Pencil size={11} />
+                    </button>
+                  </div>
+                )}
               </div>
 
               <button
@@ -464,22 +520,27 @@ export function ProfileTab() {
       )}
 
       {!isGuest && panel(
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {[
-            { name: "Лина", seed: "bookvibe-friend-lina", meta: "Фэнтези · 34 книги" },
-            { name: "Mira", seed: "bookvibe-friend-mira", meta: "Romance · 21 books" },
-            { name: "Алекс", seed: "bookvibe-friend-alex", meta: "Детективы · 18 книг" },
-          ].map((friend) => (
-            <div key={friend.seed} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <UserAvatar seed={friend.seed} name={friend.name} size={32} radius={10} />
-              <div>
-                <div style={{ color: "var(--ink)", fontSize: 13, fontWeight: 800 }}>{friend.name}</div>
-                <div style={{ color: "var(--muted)", fontSize: 11 }}>{friend.meta}</div>
-              </div>
+        <button
+          onClick={() => setShowFriendsModal(true)}
+          style={{
+            width: "100%", border: 0, borderRadius: 16, padding: "14px 16px",
+            background: "linear-gradient(135deg, color-mix(in srgb, var(--accent), white 88%), color-mix(in srgb, var(--accent-2), white 82%))",
+            cursor: "pointer", display: "flex", alignItems: "center", gap: 12,
+            textAlign: "left",
+          }}
+        >
+          <Users size={22} style={{ color: "var(--accent)", flexShrink: 0 }} />
+          <div>
+            <div style={{ fontWeight: 700, color: "var(--ink)", fontSize: 14 }}>
+              {lang === "ru" ? "Друзья" : "Friends"}
             </div>
-          ))}
-        </div>,
-        lang === "ru" ? "Друзья" : "Friends"
+            <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
+              Поиск, заявки, онлайн-статус
+            </div>
+          </div>
+          <span style={{ marginLeft: "auto", color: "var(--accent)", fontSize: 18 }}>›</span>
+        </button>,
+        ""
       )}
 
       {!isGuest && panel(
@@ -801,5 +862,7 @@ export function ProfileTab() {
         </div>
       )}
     </div>
+    {showFriendsModal && <FriendsModal onClose={() => setShowFriendsModal(false)} />}
+    </>
   );
 }

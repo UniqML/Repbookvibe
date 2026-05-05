@@ -34,6 +34,7 @@ function toAuthUser(user: {
   displayName: string;
   avatarUrl?: string | null;
   avatarSeed?: string | null;
+  statusText?: string | null;
 }) {
   return {
     id: user.id,
@@ -41,6 +42,7 @@ function toAuthUser(user: {
     displayName: user.displayName,
     avatarUrl: user.avatarUrl || null,
     avatarSeed: user.avatarSeed || createAvatarSeed(user.email || user.displayName),
+    statusText: user.statusText || null,
     isAnonymous: false,
   };
 }
@@ -281,11 +283,12 @@ router.post("/auth/profile", async (req: any, res) => {
     return;
   }
 
-  const { displayName, avatarUrl, avatarSeed } = req.body;
+  const { displayName, avatarUrl, avatarSeed, statusText } = req.body;
   const updates: any = {};
   if (displayName) updates.displayName = displayName;
   if (avatarUrl !== undefined) updates.avatarUrl = avatarUrl;
   if (avatarSeed !== undefined) updates.avatarSeed = avatarSeed;
+  if (statusText !== undefined) updates.statusText = statusText;
 
   if (Object.keys(updates).length === 0) {
     res.status(400).json({ error: "Nothing to update" });
@@ -301,6 +304,7 @@ router.post("/auth/profile", async (req: any, res) => {
       email: usersTable.email,
       avatarUrl: usersTable.avatarUrl,
       avatarSeed: usersTable.avatarSeed,
+      statusText: usersTable.statusText,
     })
     .from(usersTable)
     .where(eq(usersTable.id, userId));
@@ -308,6 +312,24 @@ router.post("/auth/profile", async (req: any, res) => {
   res.json({
     user: toAuthUser(user),
   });
+});
+
+// Heartbeat — updates last_seen_at
+router.post("/auth/heartbeat", async (req: any, res) => {
+  const userId = req.userId;
+  if (!userId || userId === 0) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  try {
+    await db
+      .update(usersTable)
+      .set({ lastSeenAt: new Date() })
+      .where(eq(usersTable.id, userId));
+    res.json({ ok: true });
+  } catch {
+    res.status(500).json({ error: "Heartbeat failed" });
+  }
 });
 
 // Reset password with code
