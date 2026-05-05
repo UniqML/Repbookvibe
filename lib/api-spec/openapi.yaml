@@ -22,6 +22,8 @@ tags:
     description: Image search operations
   - name: ai
     description: AI diary helper operations
+  - name: friends
+    description: Friends and user profile operations
 paths:
   /healthz:
     get:
@@ -301,6 +303,133 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AiDiaryHelperResult"
+
+  /auth/heartbeat:
+    post:
+      operationId: heartbeat
+      tags: [friends]
+      summary: Update the current user's last_seen_at timestamp
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HeartbeatResult"
+
+  /users/search:
+    get:
+      operationId: searchUsers
+      tags: [friends]
+      summary: Search users by display name
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Matching users
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserSearchResult"
+
+  /users/{userId}:
+    get:
+      operationId: getUserProfile
+      tags: [friends]
+      summary: Get a user's public profile with stats
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+        "404":
+          description: User not found
+
+  /friends:
+    get:
+      operationId: listFriends
+      tags: [friends]
+      summary: List friends, incoming and outgoing requests
+      responses:
+        "200":
+          description: Friends data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FriendsListResult"
+
+  /friends/request:
+    post:
+      operationId: sendFriendRequest
+      tags: [friends]
+      summary: Send a friend request
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FriendRequestBody"
+      responses:
+        "201":
+          description: Request created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FriendshipResult"
+        "409":
+          description: Request already exists
+
+  /friends/accept/{friendshipId}:
+    post:
+      operationId: acceptFriendRequest
+      tags: [friends]
+      summary: Accept an incoming friend request
+      parameters:
+        - name: friendshipId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FriendshipResult"
+        "404":
+          description: Request not found
+
+  /friends/{friendshipId}:
+    delete:
+      operationId: removeFriend
+      tags: [friends]
+      summary: Remove a friend or cancel a request
+      parameters:
+        - name: friendshipId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Removed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResult"
 
 components:
   schemas:
@@ -756,3 +885,133 @@ components:
       required:
         - source
         - result
+
+    HeartbeatResult:
+      type: object
+      properties:
+        ok:
+          type: boolean
+      required:
+        - ok
+
+    OkResult:
+      type: object
+      properties:
+        ok:
+          type: boolean
+      required:
+        - ok
+
+    FriendUser:
+      type: object
+      properties:
+        id:
+          type: integer
+        displayName:
+          type: string
+        avatarSeed:
+          type: string
+          nullable: true
+        statusText:
+          type: string
+          nullable: true
+        isOnline:
+          type: boolean
+        friendshipId:
+          type: integer
+      required:
+        - id
+        - displayName
+        - isOnline
+        - friendshipId
+
+    UserProfile:
+      type: object
+      properties:
+        id:
+          type: integer
+        displayName:
+          type: string
+        avatarSeed:
+          type: string
+          nullable: true
+        statusText:
+          type: string
+          nullable: true
+        isOnline:
+          type: boolean
+        finishedBooks:
+          type: integer
+        totalPages:
+          type: integer
+      required:
+        - id
+        - displayName
+        - isOnline
+        - finishedBooks
+        - totalPages
+
+    UserSearchResult:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/UserProfile"
+      required:
+        - items
+
+    FriendsListResult:
+      type: object
+      properties:
+        friends:
+          type: array
+          items:
+            $ref: "#/components/schemas/FriendUser"
+        incoming:
+          type: array
+          items:
+            $ref: "#/components/schemas/FriendUser"
+        outgoing:
+          type: array
+          items:
+            $ref: "#/components/schemas/FriendUser"
+      required:
+        - friends
+        - incoming
+        - outgoing
+
+    FriendRequestBody:
+      type: object
+      properties:
+        friendId:
+          type: integer
+      required:
+        - friendId
+
+    Friendship:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        friendId:
+          type: integer
+        status:
+          type: string
+        createdAt:
+          type: string
+      required:
+        - id
+        - userId
+        - friendId
+        - status
+
+    FriendshipResult:
+      type: object
+      properties:
+        friendship:
+          $ref: "#/components/schemas/Friendship"
+      required:
+        - friendship

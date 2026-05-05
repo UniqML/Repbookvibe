@@ -13,6 +13,20 @@ interface FriendUser {
   friendshipId: number;
 }
 
+interface SearchUser {
+  id: number;
+  displayName: string;
+  avatarSeed: string | null;
+  statusText: string | null;
+  isOnline: boolean;
+}
+
+type FriendState = "none" | "friends" | "pending_out" | "pending_in";
+
+interface SearchUserWithState extends SearchUser {
+  _state: FriendState;
+}
+
 interface FriendsData {
   friends: FriendUser[];
   incoming: FriendUser[];
@@ -29,7 +43,7 @@ export function FriendsModal({ onClose }: FriendsModalProps) {
   const [data, setData] = useState<FriendsData>({ friends: [], incoming: [], outgoing: [] });
   const [loading, setLoading] = useState(true);
   const [searchQ, setSearchQ] = useState("");
-  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchResults, setSearchResults] = useState<SearchUserWithState[]>([]);
   const [searching, setSearching] = useState(false);
   const [busy, setBusy] = useState<number | null>(null);
 
@@ -39,12 +53,19 @@ export function FriendsModal({ onClose }: FriendsModalProps) {
       const res = await fetch(`${API_URL}/friends`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (res.ok) setData(await res.json());
+      if (res.ok) {
+        const d = await res.json() as FriendsData;
+        setData(d);
+      }
     } catch { /* ignore */ }
     setLoading(false);
   }, [token]);
 
-  useEffect(() => { loadFriends(); }, [loadFriends]);
+  useEffect(() => {
+    loadFriends();
+    const id = setInterval(loadFriends, 30_000);
+    return () => clearInterval(id);
+  }, [loadFriends]);
 
   const handleSearch = async () => {
     if (!searchQ.trim() || !token) return;
@@ -54,22 +75,15 @@ export function FriendsModal({ onClose }: FriendsModalProps) {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
-        const d = await res.json();
-        const allRelated = [
-          ...data.friends.map(f => f.id),
-          ...data.incoming.map(f => f.id),
-          ...data.outgoing.map(f => f.id),
-        ];
-        setSearchResults(d.items.map((u: any) => ({
-          ...u,
-          _state: data.friends.find(f => f.id === u.id)
-            ? "friends"
-            : data.outgoing.find(f => f.id === u.id)
-            ? "pending_out"
-            : data.incoming.find(f => f.id === u.id)
-            ? "pending_in"
-            : "none",
-        })));
+        const d = await res.json() as { items: SearchUser[] };
+        const results: SearchUserWithState[] = d.items.map((u) => {
+          const isFriend = data.friends.find((f) => f.id === u.id);
+          const isOut = data.outgoing.find((f) => f.id === u.id);
+          const isIn = data.incoming.find((f) => f.id === u.id);
+          const state: FriendState = isFriend ? "friends" : isOut ? "pending_out" : isIn ? "pending_in" : "none";
+          return { ...u, _state: state };
+        });
+        setSearchResults(results);
       }
     } catch { /* ignore */ }
     setSearching(false);
@@ -85,13 +99,13 @@ export function FriendsModal({ onClose }: FriendsModalProps) {
         body: JSON.stringify({ friendId }),
       });
       if (res.ok) {
-        setSearchResults(prev => prev.map(u => u.id === friendId ? { ...u, _state: "pending_out" } : u));
+        setSearchResults(prev => prev.map(u => u.id === friendId ? { ...u, _state: "pending_out" as FriendState } : u));
       }
     } catch { /* ignore */ }
     setBusy(null);
   };
 
-  const handleAccept = async (friendshipId: number, userId: number) => {
+  const handleAccept = async (friendshipId: number) => {
     if (!token) return;
     setBusy(friendshipId);
     try {
@@ -149,25 +163,24 @@ export function FriendsModal({ onClose }: FriendsModalProps) {
         </div>
 
         <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
-          {[
-            { key: "friends", label: "Друзья" },
-            { key: "search", label: "Поиск" },
-            { key: "requests", label: `Заявки${requestCount > 0 ? ` (${requestCount})` : ""}` },
-          ].map(t => (
-            <button
-              key={t.key}
-              onClick={() => setTab(t.key as typeof tab)}
-              style={{
-                flex: 1, border: tab === t.key ? "1.5px solid var(--accent)" : "1px solid var(--line)",
-                borderRadius: 12, padding: "8px 4px",
-                background: tab === t.key ? "color-mix(in srgb, var(--accent), white 88%)" : "transparent",
-                color: tab === t.key ? "var(--accent)" : "var(--muted)",
-                fontSize: 12, fontWeight: 700, cursor: "pointer",
-              }}
-            >
-              {t.label}
-            </button>
-          ))}
+          {(["friends", "search", "requests"] as const).map(t => {
+            const label = t === "friends" ? "Друзья" : t === "search" ? "Поиск" : `Заявки${requestCount > 0 ? ` (${requestCount})` : ""}`;
+            return (
+              <button
+                key={t}
+                onClick={() => setTab(t)}
+                style={{
+                  flex: 1, border: tab === t ? "1.5px solid var(--accent)" : "1px solid var(--line)",
+                  borderRadius: 12, padding: "8px 4px",
+                  background: tab === t ? "color-mix(in srgb, var(--accent), white 88%)" : "transparent",
+                  color: tab === t ? "var(--accent)" : "var(--muted)",
+                  fontSize: 12, fontWeight: 700, cursor: "pointer",
+                }}
+              >
+                {label}
+              </button>
+            );
+          })}
         </div>
 
         <div style={{ flex: 1, overflowY: "auto" }}>
@@ -234,7 +247,7 @@ export function FriendsModal({ onClose }: FriendsModalProps) {
                   {searchResults.map(u => (
                     <FriendRow
                       key={u.id}
-                      friend={u}
+                      friend={{ ...u, friendshipId: 0 }}
                       action={
                         u._state === "none" ? (
                           <button
@@ -279,7 +292,7 @@ export function FriendsModal({ onClose }: FriendsModalProps) {
                               ✕
                             </button>
                             <button
-                              onClick={() => handleAccept(f.friendshipId, f.id)}
+                              onClick={() => handleAccept(f.friendshipId)}
                               disabled={busy === f.friendshipId}
                               style={{ border: 0, borderRadius: 10, padding: "6px 12px", background: "var(--accent)", color: "white", fontSize: 11, cursor: "pointer", fontWeight: 700 }}
                             >
@@ -327,7 +340,7 @@ export function FriendsModal({ onClose }: FriendsModalProps) {
   );
 }
 
-function FriendRow({ friend, action }: { friend: FriendUser & { _state?: string }; action: React.ReactNode }) {
+function FriendRow({ friend, action }: { friend: FriendUser; action: React.ReactNode }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 16, background: "var(--paper-soft)", border: "1px solid var(--line)" }}>
       <div style={{ position: "relative" }}>

@@ -6,6 +6,11 @@ import jwt from "jsonwebtoken";
 import nodemailer from "nodemailer";
 
 const router = Router();
+
+interface AuthRequest extends Request {
+  userId?: number;
+}
+
 const JWT_SECRET = process.env.JWT_SECRET || "your-super-secret-key-change-in-production";
 
 const emailTransporter = nodemailer.createTransport({
@@ -276,15 +281,20 @@ router.post("/auth/forgot-password", async (req, res) => {
 });
 
 // Update user profile
-router.post("/auth/profile", async (req: any, res) => {
+router.post("/auth/profile", async (req: AuthRequest, res) => {
   const userId = req.userId;
   if (!userId || userId === 0) {
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
 
-  const { displayName, avatarUrl, avatarSeed, statusText } = req.body;
-  const updates: any = {};
+  const { displayName, avatarUrl, avatarSeed, statusText } = req.body as {
+    displayName?: string;
+    avatarUrl?: string;
+    avatarSeed?: string;
+    statusText?: string;
+  };
+  const updates: Partial<Pick<typeof usersTable.$inferInsert, "displayName" | "avatarUrl" | "avatarSeed" | "statusText">> = {};
   if (displayName) updates.displayName = displayName;
   if (avatarUrl !== undefined) updates.avatarUrl = avatarUrl;
   if (avatarSeed !== undefined) updates.avatarSeed = avatarSeed;
@@ -315,7 +325,7 @@ router.post("/auth/profile", async (req: any, res) => {
 });
 
 // Heartbeat — updates last_seen_at
-router.post("/auth/heartbeat", async (req: any, res) => {
+router.post("/auth/heartbeat", async (req: AuthRequest, res) => {
   const userId = req.userId;
   if (!userId || userId === 0) {
     res.status(401).json({ error: "Unauthorized" });

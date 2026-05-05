@@ -181,6 +181,7 @@ export const ListChatRoomsResponse = zod.object({
           id: zod.number(),
           room_id: zod.string(),
           author: zod.string(),
+          author_avatar_seed: zod.string().nullish(),
           text: zod.string(),
           reply_to: zod.number().nullish(),
           sticker: zod.string().optional(),
@@ -335,4 +336,120 @@ export const AskAiDiaryHelperBody = zod.object({
 export const AskAiDiaryHelperResponse = zod.object({
   source: zod.string(),
   result: zod.string(),
+});
+
+/**
+ * @summary Update the current user's last_seen_at timestamp
+ */
+export const HeartbeatResponse = zod.object({
+  ok: zod.boolean(),
+});
+
+/**
+ * @summary Search users by display name
+ */
+export const SearchUsersQueryParams = zod.object({
+  q: zod.coerce.string(),
+});
+
+export const SearchUsersResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      id: zod.number(),
+      displayName: zod.string(),
+      avatarSeed: zod.string().nullish(),
+      statusText: zod.string().nullish(),
+      isOnline: zod.boolean(),
+      finishedBooks: zod.number(),
+      totalPages: zod.number(),
+    }),
+  ),
+});
+
+/**
+ * @summary Get a user's public profile with stats
+ */
+export const GetUserProfileParams = zod.object({
+  userId: zod.coerce.number(),
+});
+
+export const GetUserProfileResponse = zod.object({
+  id: zod.number(),
+  displayName: zod.string(),
+  avatarSeed: zod.string().nullish(),
+  statusText: zod.string().nullish(),
+  isOnline: zod.boolean(),
+  finishedBooks: zod.number(),
+  totalPages: zod.number(),
+});
+
+/**
+ * @summary List friends, incoming and outgoing requests
+ */
+export const ListFriendsResponse = zod.object({
+  friends: zod.array(
+    zod.object({
+      id: zod.number(),
+      displayName: zod.string(),
+      avatarSeed: zod.string().nullish(),
+      statusText: zod.string().nullish(),
+      isOnline: zod.boolean(),
+      friendshipId: zod.number(),
+    }),
+  ),
+  incoming: zod.array(
+    zod.object({
+      id: zod.number(),
+      displayName: zod.string(),
+      avatarSeed: zod.string().nullish(),
+      statusText: zod.string().nullish(),
+      isOnline: zod.boolean(),
+      friendshipId: zod.number(),
+    }),
+  ),
+  outgoing: zod.array(
+    zod.object({
+      id: zod.number(),
+      displayName: zod.string(),
+      avatarSeed: zod.string().nullish(),
+      statusText: zod.string().nullish(),
+      isOnline: zod.boolean(),
+      friendshipId: zod.number(),
+    }),
+  ),
+});
+
+/**
+ * @summary Send a friend request
+ */
+export const SendFriendRequestBody = zod.object({
+  friendId: zod.number(),
+});
+
+/**
+ * @summary Accept an incoming friend request
+ */
+export const AcceptFriendRequestParams = zod.object({
+  friendshipId: zod.coerce.number(),
+});
+
+export const AcceptFriendRequestResponse = zod.object({
+  friendship: zod.object({
+    id: zod.number(),
+    userId: zod.number(),
+    friendId: zod.number(),
+    status: zod.string(),
+    createdAt: zod.string().optional(),
+  }),
+});
+
+/**
+ * @summary Remove a friend or cancel a request
+ */
+export const RemoveFriendParams = zod.object({
+  friendshipId: zod.coerce.number(),
+});
+
+export const RemoveFriendResponse = zod.object({
+  ok: zod.boolean(),
 });

@@ -12,8 +12,21 @@ interface UserProfile {
   totalPages: number;
 }
 
+interface FriendEntry {
+  id: number;
+  friendshipId: number;
+}
+
+interface FriendsData {
+  friends: FriendEntry[];
+  incoming: FriendEntry[];
+  outgoing: FriendEntry[];
+}
+
+type FriendState = "none" | "friends" | "pending_out" | "pending_in";
+
 interface FriendStatus {
-  state: "none" | "friends" | "pending_out" | "pending_in";
+  state: FriendState;
   friendshipId?: number;
 }
 
@@ -24,6 +37,12 @@ interface UserMiniProfileProps {
 
 const API_URL = import.meta.env.VITE_API_URL || "/api";
 
+async function fetchJson<T>(url: string, token: string): Promise<T> {
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json() as Promise<T>;
+}
+
 export function UserMiniProfile({ authorName, onClose }: UserMiniProfileProps) {
   const { user, token } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -31,37 +50,56 @@ export function UserMiniProfile({ authorName, onClose }: UserMiniProfileProps) {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
-    async function load() {
-      if (!token) { setLoading(false); return; }
-      try {
-        const res = await fetch(`${API_URL}/users/search?q=${encodeURIComponent(authorName)}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!res.ok) { setLoading(false); return; }
-        const data = await res.json();
-        const found: UserProfile | undefined = data.items?.find(
-          (u: UserProfile) => u.displayName === authorName
-        );
-        if (!found) { setLoading(false); return; }
-        setProfile(found);
+  async function loadProfile(currentToken: string) {
+    interface SearchItem { id: number; displayName: string }
+    interface SearchResult { items: SearchItem[] }
+    const search = await fetchJson<SearchResult>(
+      `${API_URL}/users/search?q=${encodeURIComponent(authorName)}`,
+      currentToken
+    );
+    const found = search.items.find((u) => u.displayName === authorName);
+    if (!found) return null;
+    const full = await fetchJson<UserProfile>(`${API_URL}/users/${found.id}`, currentToken);
+    return full;
+  }
 
-        const fRes = await fetch(`${API_URL}/friends`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (fRes.ok) {
-          const fData = await fRes.json();
-          const isFriend = fData.friends?.find((f: any) => f.id === found.id);
-          const isPendingOut = fData.outgoing?.find((f: any) => f.id === found.id);
-          const isPendingIn = fData.incoming?.find((f: any) => f.id === found.id);
-          if (isFriend) setFriendStatus({ state: "friends", friendshipId: isFriend.friendshipId });
-          else if (isPendingOut) setFriendStatus({ state: "pending_out", friendshipId: isPendingOut.friendshipId });
-          else if (isPendingIn) setFriendStatus({ state: "pending_in", friendshipId: isPendingIn.friendshipId });
-        }
+  async function loadFriendStatus(currentToken: string, profileId: number): Promise<FriendStatus> {
+    const fd = await fetchJson<FriendsData>(`${API_URL}/friends`, currentToken);
+    const isFriend = fd.friends.find((f) => f.id === profileId);
+    const isPendingOut = fd.outgoing.find((f) => f.id === profileId);
+    const isPendingIn = fd.incoming.find((f) => f.id === profileId);
+    if (isFriend) return { state: "friends", friendshipId: isFriend.friendshipId };
+    if (isPendingOut) return { state: "pending_out", friendshipId: isPendingOut.friendshipId };
+    if (isPendingIn) return { state: "pending_in", friendshipId: isPendingIn.friendshipId };
+    return { state: "none" };
+  }
+
+  useEffect(() => {
+    if (!token) { setLoading(false); return; }
+    let cancelled = false;
+
+    async function init() {
+      try {
+        const p = await loadProfile(token!);
+        if (cancelled || !p) { setLoading(false); return; }
+        setProfile(p);
+        const fs = await loadFriendStatus(token!, p.id);
+        if (!cancelled) setFriendStatus(fs);
       } catch { /* ignore */ }
-      setLoading(false);
+      if (!cancelled) setLoading(false);
     }
-    load();
+    init();
+
+    const id = setInterval(async () => {
+      if (!profile || cancelled) return;
+      try {
+        const updated = await fetchJson<UserProfile>(`${API_URL}/users/${profile.id}`, token!);
+        if (!cancelled) setProfile(updated);
+      } catch { /* ignore */ }
+    }, 30_000);
+
+    return () => { cancelled = true; clearInterval(id); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authorName, token]);
 
   const handleAddFriend = async () => {
@@ -139,9 +177,7 @@ export function UserMiniProfile({ authorName, onClose }: UserMiniProfileProps) {
           </div>
         ) : !profile ? (
           <div style={{ textAlign: "center", padding: "24px 0" }}>
-            <div style={{ fontSize: 32, marginBottom: 8 }}>
-              <UserAvatar seed={authorName} name={authorName} size={72} radius={20} />
-            </div>
+            <UserAvatar seed={authorName} name={authorName} size={72} radius={20} />
             <div style={{ fontWeight: 700, color: "var(--ink)", fontSize: 18, marginTop: 12 }}>{authorName}</div>
             <div style={{ color: "var(--muted)", fontSize: 13, marginTop: 6 }}>Профиль недоступен</div>
           </div>

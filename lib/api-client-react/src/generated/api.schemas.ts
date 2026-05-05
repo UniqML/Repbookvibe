@@ -211,6 +211,59 @@ export interface AiDiaryHelperResult {
   result: string;
 }
 
+export interface HeartbeatResult {
+  ok: boolean;
+}
+
+export interface OkResult {
+  ok: boolean;
+}
+
+export interface FriendUser {
+  id: number;
+  displayName: string;
+  avatarSeed?: string | null;
+  statusText?: string | null;
+  isOnline: boolean;
+  friendshipId: number;
+}
+
+export interface UserProfile {
+  id: number;
+  displayName: string;
+  avatarSeed?: string | null;
+  statusText?: string | null;
+  isOnline: boolean;
+  finishedBooks: number;
+  totalPages: number;
+}
+
+export interface UserSearchResult {
+  items: UserProfile[];
+}
+
+export interface FriendsListResult {
+  friends: FriendUser[];
+  incoming: FriendUser[];
+  outgoing: FriendUser[];
+}
+
+export interface FriendRequestBody {
+  friendId: number;
+}
+
+export interface Friendship {
+  id: number;
+  userId: number;
+  friendId: number;
+  status: string;
+  createdAt?: string;
+}
+
+export interface FriendshipResult {
+  friendship: Friendship;
+}
+
 export type SearchBooksParams = {
   q: string;
   limit?: number;
@@ -228,4 +281,8 @@ export type SearchMusicParams = {
 export type SearchImagesParams = {
   q: string;
   limit?: number;
+};
+
+export type SearchUsersParams = {
+  q: string;
 };
