@@ -238,8 +238,16 @@ export interface UserProfile {
   totalPages: number;
 }
 
+export interface UserSearchItem {
+  id: number;
+  displayName: string;
+  avatarSeed?: string | null;
+  statusText?: string | null;
+  isOnline: boolean;
+}
+
 export interface UserSearchResult {
-  items: UserProfile[];
+  items: UserSearchItem[];
 }
 
 export interface FriendsListResult {

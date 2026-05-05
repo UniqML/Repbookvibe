@@ -78,11 +78,6 @@ async function sendVerificationEmail(email: string, code: string) {
   }
 }
 
-interface AuthRequest extends Request {
-  userId?: number;
-  user?: any;
-}
-
 // Register endpoint
 router.post("/auth/register", async (req: AuthRequest, res: Response) => {
   try {
@@ -393,9 +388,8 @@ export function verifyToken(
   }
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    const decoded = jwt.verify(token, JWT_SECRET) as { userId?: number };
     req.userId = decoded.userId || 0;
-    req.user = decoded;
     next();
   } catch {
     req.userId = 0; // treat as guest if token invalid

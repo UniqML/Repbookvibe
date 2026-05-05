@@ -5,8 +5,8 @@
  * BookVibe API specification
  * OpenAPI spec version: 0.1.0
  */
-import type { UserProfile } from "./userProfile";
+import type { UserSearchItem } from "./userSearchItem";
 
 export interface UserSearchResult {
-  items: UserProfile[];
+  items: UserSearchItem[];
 }

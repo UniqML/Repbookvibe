@@ -136,6 +136,10 @@ export function ChatsTab({ user }: ChatsTabProps) {
     const room = rooms.find(r => r.id === activeRoom);
     const roomImg = getGenreImage(room?.name || "", room?.description || "");
     return (
+      <>
+      {miniProfileAuthor && (
+        <UserMiniProfile authorName={miniProfileAuthor} onClose={() => setMiniProfileAuthor(null)} />
+      )}
       <div style={{ display: "flex", flexDirection: "column", height: "100%", padding: 0 }}>
         <div style={{
           display: "flex", alignItems: "center", gap: 10, padding: "14px 18px 10px",
@@ -247,6 +251,7 @@ export function ChatsTab({ user }: ChatsTabProps) {
           )}
         </div>
       </div>
+      </>
     );
   }
 

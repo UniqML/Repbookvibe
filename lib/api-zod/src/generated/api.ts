@@ -360,8 +360,6 @@ export const SearchUsersResponse = zod.object({
       avatarSeed: zod.string().nullish(),
       statusText: zod.string().nullish(),
       isOnline: zod.boolean(),
-      finishedBooks: zod.number(),
-      totalPages: zod.number(),
     }),
   ),
 });

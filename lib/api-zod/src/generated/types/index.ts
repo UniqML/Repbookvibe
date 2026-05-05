@@ -50,4 +50,5 @@ export * from "./searchMusicParams";
 export * from "./searchUsersParams";
 export * from "./sendMessageBody";
 export * from "./userProfile";
+export * from "./userSearchItem";
 export * from "./userSearchResult";

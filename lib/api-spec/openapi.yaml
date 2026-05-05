@@ -951,13 +951,33 @@ components:
         - finishedBooks
         - totalPages
 
+    UserSearchItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        displayName:
+          type: string
+        avatarSeed:
+          type: string
+          nullable: true
+        statusText:
+          type: string
+          nullable: true
+        isOnline:
+          type: boolean
+      required:
+        - id
+        - displayName
+        - isOnline
+
     UserSearchResult:
       type: object
       properties:
         items:
           type: array
           items:
-            $ref: "#/components/schemas/UserProfile"
+            $ref: "#/components/schemas/UserSearchItem"
       required:
         - items
 
