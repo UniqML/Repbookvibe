@@ -597,7 +597,11 @@ export function ProfileTab() {
       {/* Diary feed */}
       {!isGuest && panel(
         <div>
-          {diaryEntries.length === 0 ? (
+          {diaryData === undefined ? (
+            <div style={{ textAlign: "center", padding: "24px 0", color: "var(--muted)", fontSize: 13 }}>
+              Загрузка...
+            </div>
+          ) : diaryEntries.length === 0 ? (
             <div style={{ textAlign: "center", padding: "24px 0" }}>
               <BookOpen size={40} style={{ color: "var(--accent)", opacity: 0.3, marginBottom: 12 }} />
               <p style={{ margin: "0 0 4px", color: "var(--ink)", fontWeight: 700, fontSize: 14 }}>
@@ -611,9 +615,9 @@ export function ProfileTab() {
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {(diaryEntries as DiaryEntry[]).map((entry) => {
                 const book = getBookForEntry(entry.book_id);
-                const entryTitle = (entry as any).book_title || book?.title;
-                const entryCover = (entry as any).book_cover || book?.cover;
-                const entryAuthor = (entry as any).book_author || book?.author;
+                const entryTitle = entry.book_title || book?.title;
+                const entryCover = entry.book_cover || book?.cover;
+                const entryAuthor = entry.book_author || book?.author;
                 const stickers = entry.stickers || [];
                 const hasImages = (entry.images || []).length > 0;
                 const hasMusic = entry.music && Object.keys(entry.music).length > 0;

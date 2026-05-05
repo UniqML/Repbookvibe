@@ -57,9 +57,13 @@ async function buildCardElement(entry: DiaryEntry, book: Book | null): Promise<H
   const stickers = entry.stickers || [];
   const ratings = entry.ratings ? Object.entries(entry.ratings) : [];
 
+  const effectiveCover = entry.book_cover ?? book?.cover ?? "";
+  const effectiveTitle = entry.book_title ?? book?.title ?? "Книга";
+  const effectiveAuthor = entry.book_author ?? book?.author ?? "";
+
   // Pre-load images as base64
   const [coverB64, ...imgB64s] = await Promise.all([
-    book?.cover ? toBase64(book.cover) : Promise.resolve(""),
+    effectiveCover ? toBase64(effectiveCover) : Promise.resolve(""),
     ...images.map(toBase64),
   ]);
 
@@ -94,13 +98,13 @@ async function buildCardElement(entry: DiaryEntry, book: Book | null): Promise<H
 
   const titleEl = document.createElement("div");
   titleEl.style.cssText = `font-size: 26px; font-weight: 800; color: ${C.ink}; line-height: 1.2; margin-bottom: 6px; font-family: Georgia, serif;`;
-  titleEl.textContent = book?.title || "Книга";
+  titleEl.textContent = effectiveTitle;
   bookInfo.appendChild(titleEl);
 
-  if (book?.author) {
+  if (effectiveAuthor) {
     const authorEl = document.createElement("div");
     authorEl.style.cssText = `font-size: 15px; color: ${C.muted}; margin-bottom: 10px; font-style: italic;`;
-    authorEl.textContent = book.author;
+    authorEl.textContent = effectiveAuthor;
     bookInfo.appendChild(authorEl);
   }
 
@@ -325,6 +329,10 @@ async function captureCard(entry: DiaryEntry, book: Book | null): Promise<HTMLCa
 }
 
 export function DiaryDetailModal({ entry, book, onClose }: DiaryDetailModalProps) {
+  const bookTitle = entry.book_title ?? book?.title ?? "Книга";
+  const bookCover = entry.book_cover ?? book?.cover ?? "";
+  const bookAuthor = entry.book_author ?? book?.author ?? "";
+
   const musicEntries = entry.music ? Object.entries(entry.music) : [];
   const images = entry.images || [];
   const stickers = entry.stickers || [];
@@ -373,7 +381,7 @@ export function DiaryDetailModal({ entry, book, onClose }: DiaryDetailModalProps
         }
       }
 
-      const title = (book?.title || "diary").replace(/[^a-zA-Zа-яА-Я0-9]/g, "_");
+      const title = (bookTitle || "diary").replace(/[^a-zA-Zа-яА-Я0-9]/g, "_");
       pdf.save(`bookvibe_${title}.pdf`);
     } catch (err) {
       console.error("PDF error:", err);
@@ -389,13 +397,13 @@ export function DiaryDetailModal({ entry, book, onClose }: DiaryDetailModalProps
       const blob = await new Promise<Blob>((resolve, reject) =>
         canvas.toBlob(b => b ? resolve(b) : reject(new Error("canvas.toBlob failed")), "image/png")
       );
-      const title = book?.title || "Запись из дневника";
+      const title = bookTitle || "Запись из дневника";
       const file = new File([blob], `bookvibe_${title}.png`, { type: "image/png" });
 
       if (navigator.share && navigator.canShare?.({ files: [file] })) {
         await navigator.share({ title, files: [file] });
       } else {
-        const shareText = `${title}${book?.author ? ` — ${book.author}` : ""}${book?.rating ? ` (${Math.round(book.rating)}/5 ★)` : ""} #BookVibe`;
+        const shareText = `${title}${bookAuthor ? ` — ${bookAuthor}` : ""}${book?.rating ? ` (${Math.round(book.rating)}/5 ★)` : ""} #BookVibe`;
         try {
           await navigator.clipboard.writeText(shareText);
           toast({ title: "Скопировано!", description: "Текст записи скопирован в буфер обмена" });
@@ -443,19 +451,19 @@ export function DiaryDetailModal({ entry, book, onClose }: DiaryDetailModalProps
           zIndex: 10,
           display: "flex", alignItems: "center", gap: 12,
         }}>
-          {book?.cover && (
+          {bookCover && (
             <img
-              src={book.cover}
-              alt={book?.title}
+              src={bookCover}
+              alt={bookTitle}
               style={{ width: 42, height: 63, objectFit: "cover", borderRadius: 8, flexShrink: 0 }}
             />
           )}
           <div style={{ flex: 1, minWidth: 0 }}>
             <h3 style={{ margin: 0, color: "var(--ink)", fontWeight: 800, fontSize: 16, lineHeight: 1.25 }}>
-              {book?.title || "Книга"}
+              {bookTitle}
             </h3>
-            {book?.author && (
-              <p style={{ margin: "2px 0 0", color: "var(--muted)", fontSize: 12 }}>{book.author}</p>
+            {bookAuthor && (
+              <p style={{ margin: "2px 0 0", color: "var(--muted)", fontSize: 12 }}>{bookAuthor}</p>
             )}
             {book?.description && (() => {
               const year = book.description.match(/\b(19|20)\d{2}\b/)?.[0];
