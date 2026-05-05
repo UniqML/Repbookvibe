@@ -12,6 +12,13 @@ interface UserProfile {
   totalPages: number;
 }
 
+type FriendState = "none" | "friends" | "pending_out" | "pending_in";
+
+interface FriendStatus {
+  state: FriendState;
+  friendshipId?: number;
+}
+
 interface FriendEntry {
   id: number;
   friendshipId: number;
@@ -23,19 +30,25 @@ interface FriendsData {
   outgoing: FriendEntry[];
 }
 
-type FriendState = "none" | "friends" | "pending_out" | "pending_in";
-
-interface FriendStatus {
-  state: FriendState;
-  friendshipId?: number;
-}
-
 interface UserMiniProfileProps {
-  authorName: string;
+  userId: number;
+  fallbackName: string;
   onClose: () => void;
 }
 
 const API_URL = import.meta.env.VITE_API_URL || "/api";
+
+function getAchievementBadges(finishedBooks: number, totalPages: number): string[] {
+  const badges: string[] = [];
+  if (finishedBooks >= 1) badges.push("📖");
+  if (finishedBooks >= 5) badges.push("📚");
+  if (finishedBooks >= 10) badges.push("🔥");
+  if (finishedBooks >= 25) badges.push("💫");
+  if (finishedBooks >= 50) badges.push("👑");
+  if (totalPages >= 1000) badges.push("⚡");
+  if (totalPages >= 5000) badges.push("💎");
+  return badges;
+}
 
 async function fetchJson<T>(url: string, token: string): Promise<T> {
   const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
@@ -43,25 +56,12 @@ async function fetchJson<T>(url: string, token: string): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-export function UserMiniProfile({ authorName, onClose }: UserMiniProfileProps) {
+export function UserMiniProfile({ userId, fallbackName, onClose }: UserMiniProfileProps) {
   const { user, token } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [friendStatus, setFriendStatus] = useState<FriendStatus>({ state: "none" });
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
-
-  async function loadProfile(currentToken: string) {
-    interface SearchItem { id: number; displayName: string }
-    interface SearchResult { items: SearchItem[] }
-    const search = await fetchJson<SearchResult>(
-      `${API_URL}/users/search?q=${encodeURIComponent(authorName)}`,
-      currentToken
-    );
-    const found = search.items.find((u) => u.displayName === authorName);
-    if (!found) return null;
-    const full = await fetchJson<UserProfile>(`${API_URL}/users/${found.id}`, currentToken);
-    return full;
-  }
 
   async function loadFriendStatus(currentToken: string, profileId: number): Promise<FriendStatus> {
     const fd = await fetchJson<FriendsData>(`${API_URL}/friends`, currentToken);
@@ -80,8 +80,8 @@ export function UserMiniProfile({ authorName, onClose }: UserMiniProfileProps) {
 
     async function init() {
       try {
-        const p = await loadProfile(token!);
-        if (cancelled || !p) { setLoading(false); return; }
+        const p = await fetchJson<UserProfile>(`${API_URL}/users/${userId}`, token!);
+        if (cancelled) return;
         setProfile(p);
         const fs = await loadFriendStatus(token!, p.id);
         if (!cancelled) setFriendStatus(fs);
@@ -91,16 +91,16 @@ export function UserMiniProfile({ authorName, onClose }: UserMiniProfileProps) {
     init();
 
     const id = setInterval(async () => {
-      if (!profile || cancelled) return;
+      if (cancelled) return;
       try {
-        const updated = await fetchJson<UserProfile>(`${API_URL}/users/${profile.id}`, token!);
+        const updated = await fetchJson<UserProfile>(`${API_URL}/users/${userId}`, token!);
         if (!cancelled) setProfile(updated);
       } catch { /* ignore */ }
     }, 30_000);
 
     return () => { cancelled = true; clearInterval(id); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authorName, token]);
+  }, [userId, token]);
 
   const handleAddFriend = async () => {
     if (!profile || !token) return;
@@ -143,6 +143,7 @@ export function UserMiniProfile({ authorName, onClose }: UserMiniProfileProps) {
   };
 
   const isMe = user && profile && user.id === profile.id;
+  const badges = profile ? getAchievementBadges(profile.finishedBooks, profile.totalPages) : [];
 
   return (
     <div
@@ -177,8 +178,8 @@ export function UserMiniProfile({ authorName, onClose }: UserMiniProfileProps) {
           </div>
         ) : !profile ? (
           <div style={{ textAlign: "center", padding: "24px 0" }}>
-            <UserAvatar seed={authorName} name={authorName} size={72} radius={20} />
-            <div style={{ fontWeight: 700, color: "var(--ink)", fontSize: 18, marginTop: 12 }}>{authorName}</div>
+            <UserAvatar seed={fallbackName} name={fallbackName} size={72} radius={20} />
+            <div style={{ fontWeight: 700, color: "var(--ink)", fontSize: 18, marginTop: 12 }}>{fallbackName}</div>
             <div style={{ color: "var(--muted)", fontSize: 13, marginTop: 6 }}>Профиль недоступен</div>
           </div>
         ) : (
@@ -203,6 +204,13 @@ export function UserMiniProfile({ authorName, onClose }: UserMiniProfileProps) {
                 <div style={{ fontSize: 12, color: profile.isOnline ? "#22c55e" : "var(--muted)", marginTop: 4, fontWeight: 600 }}>
                   {profile.isOnline ? "🟢 онлайн" : "⚪ офлайн"}
                 </div>
+                {badges.length > 0 && (
+                  <div style={{ marginTop: 6, display: "flex", gap: 4, flexWrap: "wrap" }}>
+                    {badges.map(badge => (
+                      <span key={badge} style={{ fontSize: 16, lineHeight: 1 }} title="Значок достижения">{badge}</span>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 

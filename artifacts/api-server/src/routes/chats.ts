@@ -140,6 +140,7 @@ router.post("/chats/:roomId/messages", async (req, res) => {
     roomId,
     author: body.author?.trim() || "Reader",
     authorAvatarSeed: avatarSeed,
+    authorUserId: userId && userId > 0 ? userId : null,
     text: moderation.text,
     replyTo: body.reply_to ?? null,
     sticker: body.sticker?.trim() || "",

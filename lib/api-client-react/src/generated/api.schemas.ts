@@ -118,6 +118,7 @@ export interface ChatMessage {
   room_id: string;
   author: string;
   author_avatar_seed?: string | null;
+  author_user_id?: number | null;
   text: string;
   reply_to?: number | null;
   sticker?: string;

@@ -699,6 +699,9 @@ components:
         author_avatar_seed:
           type: string
           nullable: true
+        author_user_id:
+          type: integer
+          nullable: true
         text:
           type: string
         reply_to:

@@ -111,6 +111,11 @@ export async function runMigrations() {
       );
     `);
 
+    await db.execute(sql`
+      ALTER TABLE chat_messages
+      ADD COLUMN IF NOT EXISTS author_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL;
+    `);
+
     console.log("✓ Migrations completed");
   } catch (error) {
     console.error("Migration error:", error);
