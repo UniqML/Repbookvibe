@@ -11,11 +11,10 @@ import { BookTab } from "@/tabs/BookTab";
 import { TrackersTab } from "@/tabs/TrackersTab";
 import { ProfileTab } from "@/tabs/ProfileTab";
 import { AdminPanel } from "@/pages/AdminPanel";
-import { useAuth, useAuthState, AuthContext } from "@/hooks/useAuth";
-import { LangProvider, useLanguage } from "@/hooks/useLanguage";
-import { Toaster } from "@/components/ui/toaster";
+import { ComponentDemo } from "@/pages/ComponentDemo";
 
 const isAdminRoute = window.location.pathname.endsWith("/admin-panel-secret-777");
+const isDemoRoute = window.location.pathname.endsWith("/demo");
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
@@ -115,6 +114,10 @@ export default function App() {
 
   if (isAdminRoute) {
     return <AdminPanel />;
+  }
+
+  if (isDemoRoute) {
+    return <ComponentDemo />;
   }
 
   return (
