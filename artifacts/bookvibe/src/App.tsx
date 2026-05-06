@@ -12,6 +12,9 @@ import { TrackersTab } from "@/tabs/TrackersTab";
 import { ProfileTab } from "@/tabs/ProfileTab";
 import { AdminPanel } from "@/pages/AdminPanel";
 import { ComponentDemo } from "@/pages/ComponentDemo";
+import { LangProvider, useLanguage } from "@/hooks/useLanguage";
+import { useAuth, useAuthState, AuthContext } from "@/hooks/useAuth";
+import { Toaster } from "@/components/ui/toaster";
 
 const isAdminRoute = window.location.pathname.endsWith("/admin-panel-secret-777");
 const isDemoRoute = window.location.pathname.endsWith("/demo");
